@@ -406,11 +406,11 @@ class FliprRealTimeRSSISensor(RestoreSensor):
 
     @property
     def available(self) -> bool:
-        if (
-            self._coordinator.data
-            and self._coordinator.data.get("bluetooth_status") == BT_STATUS_OUT_OF_RANGE
-        ):
-            return False
+        # RSSI is driven by BLE advertisement callbacks, independent of the polling
+        # connection state. Rely on ble_available, which already flips to False
+        # immediately on signal loss (via _on_ble_unavailable), rather than the
+        # bluetooth_status field: that field can stay OUT_OF_RANGE while measurements
+        # are paused even though advertisements (and thus RSSI) are still arriving.
         return self._coordinator.ble_available and self._attr_native_value is not None
 
     async def async_added_to_hass(self) -> None:
@@ -474,7 +474,10 @@ class FliprNextAnalysisSensor(CoordinatorEntity, SensorEntity):
         if not last or not interval:
             return None
         if last.tzinfo is None:
-            last = dt_util.as_utc(last)
+            # last_received is always stored as UTC, so a naive value (e.g. legacy
+            # restored data) must be tagged as UTC, not reinterpreted as local time
+            # the way dt_util.as_utc would do.
+            last = last.replace(tzinfo=dt_util.UTC)
         next_dt = last + interval
         if next_dt < dt_util.utcnow():
             return None

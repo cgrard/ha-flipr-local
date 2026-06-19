@@ -215,14 +215,18 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         self._pending_cmd_type = cmd_type
         self._pending_cmd_val = cmd_val
 
+    def _cancel_pending_retry(self) -> None:
+        """Cancel an armed retry timer, if any (e.g. when going out of range)."""
+        if self._retry_cancel:
+            self._retry_cancel()
+            self._retry_cancel = None
+
     @callback
     def _on_ble_unavailable(self, _info: BluetoothServiceInfoBleak) -> None:
         _LOGGER.debug("Flipr %s: BLE signal lost", self.safe_mac)
         self._ble_available = False
         self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
-        if self._retry_cancel:
-            self._retry_cancel()
-            self._retry_cancel = None
+        self._cancel_pending_retry()
         self.retry_count = 0
 
     @callback
@@ -342,6 +346,8 @@ class FliprDataCoordinator(DataUpdateCoordinator):
 
         def _schedule_save_callback() -> None:
             self._save_cancel = None  # handle has fired — clear before spawning task
+            if self._is_shutdown:
+                return
             entry = self.hass.config_entries.async_get_entry(entry_id)
             if entry:
                 entry.async_create_background_task(
@@ -355,7 +361,9 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         )
 
     async def _do_save(self) -> None:
-        self._save_cancel = None
+        # NOTE: do not touch self._save_cancel here. The scheduler callback owns
+        # it and may have already installed a new timer handle by the time this
+        # coroutine runs; clearing it would leak that handle (uncancellable timer).
         if self._is_shutdown:
             return
         try:
@@ -597,6 +605,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
             )
             self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
             self.retry_count = 0
+            self._cancel_pending_retry()
             if self.data.get("ph_raw") is not None:
                 return dict(self.data)
             raise UpdateFailed(
@@ -615,6 +624,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
             )
             self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
             self.retry_count = 0
+            self._cancel_pending_retry()
             if self.data.get("ph_raw") is not None:
                 return dict(self.data)
             raise UpdateFailed(
@@ -848,12 +858,18 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                 if not is_init_done:
                     self._init_done = True
 
-                # Only reset if _pending_cmd_type hasn't been changed by update_listener
-                # during this BLE cycle (race condition guard).
-                # is_init_done guard: on the init cycle, cmd_type comes from config (not
-                # from _pending_cmd_type), so the equality check would be accidentally True
-                # even if update_listener wrote a new "mode" command during the cycle.
-                if is_init_done and self._pending_cmd_type == cmd_type:
+                # Only reset if the pending command hasn't been changed by
+                # update_listener during this BLE cycle (race condition guard).
+                # Compare BOTH type and value: a new "mode" command with a different
+                # value written mid-cycle must survive, otherwise the user's sync-mode
+                # change would be silently clobbered back to "analyze".
+                # is_init_done guard: on the init cycle, cmd_type/cmd_val come from
+                # config (not from _pending_cmd_*), so the equality check could be
+                # accidentally True even if update_listener wrote a new command.
+                if is_init_done and (self._pending_cmd_type, self._pending_cmd_val) == (
+                    cmd_type,
+                    cmd_val,
+                ):
                     self._pending_cmd_type = "analyze"
                     self._pending_cmd_val = 0x01
 
@@ -883,6 +899,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                         self.safe_mac,
                     )
                     self.retry_count = 0
+                    self._cancel_pending_retry()
                     self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
                     if self.data.get("ph_raw") is not None:
                         return dict(self.data)

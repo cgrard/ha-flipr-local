@@ -88,13 +88,24 @@ def _flatten_sections(user_input: dict) -> dict:
 
 
 def validate_calibration(data: dict) -> dict | tuple[str, str]:
-    try:
-        raw_c4 = _to_float(data.get(CONF_PH_CALIB_4, DEFAULT_PH_CALIB_4))
-        raw_c7 = _to_float(data.get(CONF_PH_CALIB_7, DEFAULT_PH_CALIB_7))
-        ref4 = _to_float(data.get(CONF_PH_REF_4, DEFAULT_PH_REF_4))
-        ref7 = _to_float(data.get(CONF_PH_REF_7, DEFAULT_PH_REF_7))
-    except (ValueError, TypeError):
-        return (CONF_PH_CALIB_4, "unknown")
+    # Parse each pH field individually so a parsing error is attributed to the
+    # field that actually failed, instead of always blaming ph_calib_4.
+    ph_field_defaults = (
+        (CONF_PH_CALIB_4, DEFAULT_PH_CALIB_4),
+        (CONF_PH_CALIB_7, DEFAULT_PH_CALIB_7),
+        (CONF_PH_REF_4, DEFAULT_PH_REF_4),
+        (CONF_PH_REF_7, DEFAULT_PH_REF_7),
+    )
+    parsed_ph: dict[str, float] = {}
+    for field, default in ph_field_defaults:
+        try:
+            parsed_ph[field] = _to_float(data.get(field, default))
+        except (ValueError, TypeError):
+            return (field, "unknown")
+    raw_c4 = parsed_ph[CONF_PH_CALIB_4]
+    raw_c7 = parsed_ph[CONF_PH_CALIB_7]
+    ref4 = parsed_ph[CONF_PH_REF_4]
+    ref7 = parsed_ph[CONF_PH_REF_7]
 
     try:
         if CONF_PH_MIN in data and CONF_PH_MAX in data:
@@ -169,6 +180,9 @@ class FliprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._mac_address: str | None = None
         self._bt_name: str | None = None
         self._discovered_name: str = "Flipr"
+        # Holds the user step input when the user picks manual MAC entry, so the
+        # calibration/general values they already filled in are not discarded.
+        self._pending_user_input: dict | None = None
 
     def _get_display_name(self, bt_name: str | None, model: str) -> str:
         if bt_name and bt_name != "Flipr" and not bt_name.startswith("Flipr Analys"):
@@ -211,6 +225,9 @@ class FliprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 raw_selection = mac or self._mac_address or ""
                 if raw_selection.lower() == MANUAL_ENTRY:
+                    # Preserve everything the user already entered so they don't
+                    # have to retype calibration after the manual MAC step.
+                    self._pending_user_input = user_input
                     return await self.async_step_manual()
 
                 mac_match = re.search(
@@ -419,8 +436,22 @@ class FliprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_MAC_ADDRESS] = "invalid_mac"
             else:
                 self._mac_address = mac_raw.upper()
+                # Set the unique_id (and reject duplicates) here, mirroring the
+                # bluetooth discovery step. Without this, a purely manual entry never
+                # got a unique_id, so the same Flipr could be configured twice.
+                await self.async_set_unique_id(self._mac_address)
+                self._abort_if_unique_id_configured()
                 self._bt_name = None
                 self._discovered_name = "Flipr"
+                # Resume the user step with the previously entered values (if any),
+                # substituting the real MAC for the "manual" sentinel so it is not
+                # routed back here. Falls back to a fresh form if nothing was stashed.
+                resumed = self._pending_user_input
+                self._pending_user_input = None
+                if resumed is not None:
+                    resumed = dict(resumed)
+                    resumed[CONF_MAC_ADDRESS] = self._mac_address
+                    return await self.async_step_user(user_input=resumed)
                 return await self.async_step_user(user_input=None)
 
         return self.async_show_form(
