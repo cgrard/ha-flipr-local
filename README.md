@@ -62,7 +62,7 @@ Flipr Local lets you replace the cloud with a **local control** solution, provid
 * 🏅 **Tested on**: Validated with **Flipr AnalysR 3** and **Flipr Start Max**.
 * 🛠️ **Required Hardware**: Internal Bluetooth, USB Bluetooth dongle, or **ESPHome Bluetooth Proxy** (Highly recommended, [easy installation here](https://esphome.github.io/bluetooth-proxies/)).
 * 📶 **Signal Quality**: A stable **RSSI signal (ideally above -75 dBm)** is critical to ensure connection to the Flipr. Testing shows that signals below **-80 dBm** can cause frequent failures.
-* ⏱️ **Real-time Monitoring**: A `sensor.*_signal_bluetooth` entity, using passive listening in Home Assistant, lets you monitor the signal strength in real-time without draining the probe's battery!
+* ⏱️ **Real-time Monitoring**: A `sensor.*_bluetooth_signal` entity, using passive listening in Home Assistant, lets you monitor the signal strength in real-time without draining the probe's battery!
 
 > ❌ **Not Compatible**: Versions that operate exclusively via the Sigfox network are not supported.
 

@@ -6,7 +6,7 @@ Suite à la liquidation de l'entreprise CTAC-TECH (Flipr), les serveurs officiel
 
 ## ✨ Fonctionnalités
 * **100% Local :** Dépendance cloud supprimée. Fonctionne via l'antenne Bluetooth de votre serveur ou via des Proxy ESPHome.
-* **Nouvel Algorithme de Chlore Actif :** Intègre un modèle de Machine Learning recalibré spécifiquement pour compenser les lacunes de l'équation de Nernst sur les eaux stabilisées.
+* **Chlore Actif (HOCl) :** Modèle thermodynamique (fraction HOCl calculée via le pKa dépendant de la température) tenant compte du pH, de la température et du stabilisant (CyA), pour estimer le pouvoir désinfectant réel au-delà de la simple lecture ORP.
 * **Lecture Active (Pump Control) :** Déclenchement manuel de la pompe d'analyse (Wait-and-Read) reproduisant le comportement natif de l'application.
 * **Métriques complètes :** Température, pH, Redox (ORP), Batterie, Indice de Langelier (ISL) et Qualité du signal Bluetooth (RSSI).
 
