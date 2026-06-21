@@ -52,6 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from a shared bounds table so the config and options flows can no longer drift
   apart (the calibration and threshold sections were fully duplicated), and split
   `validate_calibration` into focused helpers. New tests lock the schema builders.
+- Refactored the entity platforms with no behaviour change: a shared
+  `resolve_entry_context` helper and `CONF_MODEL` constant remove the repeated
+  setup boilerplate, and the dispatcher signal is centralised in
+  `options_updated_signal` (one sender, four receivers) with a small entity mixin
+  for the subscription wiring.
 
 ### Fixed
 
