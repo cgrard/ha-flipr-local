@@ -9,13 +9,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
-    DOMAIN,
-    CONF_MAC_ADDRESS,
-    get_flipr_model,
     flipr_device_info,
+    resolve_entry_context,
     CONF_PH_MIN,
     CONF_PH_MAX,
     CONF_ORP_MIN,
@@ -29,6 +26,7 @@ from .const import (
     DEFAULT_TEMP_MIN,
     DEFAULT_TEMP_MAX,
 )
+from .entity import FliprOptionsUpdatedEntity
 
 _DEFAULT_THRESHOLDS: dict[str, float] = {
     CONF_PH_MIN: DEFAULT_PH_MIN,
@@ -43,9 +41,7 @@ _DEFAULT_THRESHOLDS: dict[str, float] = {
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    mac = entry.data[CONF_MAC_ADDRESS]
-    model_name = entry.data.get("model") or get_flipr_model(entry.title)
+    coordinator, mac, model_name = resolve_entry_context(hass, entry)
 
     async_add_entities(
         [
@@ -67,7 +63,9 @@ async def async_setup_entry(
     )
 
 
-class FliprAlertSensor(CoordinatorEntity, BinarySensorEntity):
+class FliprAlertSensor(
+    FliprOptionsUpdatedEntity, CoordinatorEntity, BinarySensorEntity
+):
     _attr_has_entity_name = True
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
 
@@ -107,13 +105,7 @@ class FliprAlertSensor(CoordinatorEntity, BinarySensorEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         self._refresh_cached_thresholds()
-        self.async_on_remove(
-            async_dispatcher_connect(
-                self.hass,
-                f"{DOMAIN}_{self._mac}_options_updated",
-                self._handle_options_updated,
-            )
-        )
+        self._subscribe_options_updated()
 
     @callback
     def _handle_options_updated(self) -> None:

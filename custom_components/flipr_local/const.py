@@ -9,6 +9,7 @@ DOMAIN = "flipr_local"
 PLATFORMS = ["sensor", "binary_sensor", "button", "number", "select", "switch"]
 
 CONF_MAC_ADDRESS = "mac_address"
+CONF_MODEL = "model"
 CONF_USE_GATEWAY = "use_gateway"
 
 CONF_PH_CALIB_4 = "ph_calib_4"
@@ -115,3 +116,16 @@ def flipr_device_info(mac: str, model_name: str) -> DeviceInfo:
         manufacturer="Flipr",
         model=model_name,
     )
+
+
+def options_updated_signal(mac: str) -> str:
+    """Dispatcher signal fired when an entry's options change (one per device)."""
+    return f"{DOMAIN}_{mac}_options_updated"
+
+
+def resolve_entry_context(hass, entry):
+    """Return (coordinator, mac, model_name) for a platform's async_setup_entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    mac = entry.data[CONF_MAC_ADDRESS]
+    model_name = entry.data.get(CONF_MODEL) or get_flipr_model(entry.title)
+    return coordinator, mac, model_name

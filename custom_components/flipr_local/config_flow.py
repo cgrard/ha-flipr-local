@@ -16,6 +16,7 @@ from homeassistant.helpers import selector
 from .const import (
     DOMAIN,
     CONF_MAC_ADDRESS,
+    CONF_MODEL,
     CONF_PH_CALIB_4,
     CONF_PH_CALIB_7,
     CONF_PH_MIN,
@@ -342,10 +343,10 @@ class FliprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                     entry_data = {
                         CONF_MAC_ADDRESS: final_mac,
-                        "model": model,
+                        CONF_MODEL: model,
                     }
                     normalized_input.pop(CONF_MAC_ADDRESS, None)
-                    normalized_input.pop("model", None)
+                    normalized_input.pop(CONF_MODEL, None)
 
                     if CONF_SYNC_MODE not in normalized_input:
                         normalized_input[CONF_SYNC_MODE] = (

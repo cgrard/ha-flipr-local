@@ -25,14 +25,11 @@ from homeassistant.const import UnitOfTemperature, EntityCategory
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
-    DOMAIN,
-    CONF_MAC_ADDRESS,
     CONF_CHLORINE_MODEL,
-    get_flipr_model,
     flipr_device_info,
+    resolve_entry_context,
     DATA_ESTIMATED_FREE_CHLORINE,
     DATA_ACTIVE_CHLORINE_HOCL,
     BT_STATUS_WAITING,
@@ -49,6 +46,7 @@ from .const import (
     BT_STATUS_PAUSED,
     BT_STATUS_OUT_OF_RANGE,
 )
+from .entity import FliprOptionsUpdatedEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,9 +59,7 @@ _CHLORINE_MODEL_DEPENDENT_KEYS = frozenset(
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    mac_address = entry.data[CONF_MAC_ADDRESS]
-    model_name = entry.data.get("model") or get_flipr_model(entry.title)
+    coordinator, mac_address, model_name = resolve_entry_context(hass, entry)
 
     async_add_entities(
         [
@@ -222,7 +218,7 @@ async def async_setup_entry(
     )
 
 
-class FliprSensor(CoordinatorEntity, SensorEntity):
+class FliprSensor(FliprOptionsUpdatedEntity, CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
 
     def __init__(
@@ -276,13 +272,7 @@ class FliprSensor(CoordinatorEntity, SensorEntity):
         # and causing unnecessary dispatcher callbacks on every options update.
         if self._key in _CHLORINE_MODEL_DEPENDENT_KEYS:
             self._refresh_chlorine_model()
-            self.async_on_remove(
-                async_dispatcher_connect(
-                    self.hass,
-                    f"{DOMAIN}_{self._mac}_options_updated",
-                    self._handle_options_updated,
-                )
-            )
+            self._subscribe_options_updated()
 
     @callback
     def _handle_options_updated(self) -> None:

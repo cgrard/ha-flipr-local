@@ -9,10 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
-    DOMAIN,
-    CONF_MAC_ADDRESS,
-    get_flipr_model,
     flipr_device_info,
+    resolve_entry_context,
     TIMEOUT_FORCE_REFRESH,
     BT_STATUS_OUT_OF_RANGE,
 )
@@ -23,9 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    mac = entry.data[CONF_MAC_ADDRESS]
-    model_name = entry.data.get("model") or get_flipr_model(entry.title)
+    coordinator, mac, model_name = resolve_entry_context(hass, entry)
 
     async_add_entities([FliprForceAnalysisButton(coordinator, mac, model_name)])
 

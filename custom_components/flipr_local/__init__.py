@@ -89,6 +89,7 @@ from .const import (
     DEFAULT_ORP_REF,
     BLE_RECENTLY_SEEN_THRESHOLD_S,
     get_flipr_model,
+    options_updated_signal,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -1076,10 +1077,7 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
     coordinator.recompute_derived_values()
 
-    async_dispatcher_send(
-        hass,
-        f"{DOMAIN}_{coordinator.mac}_options_updated",
-    )
+    async_dispatcher_send(hass, options_updated_signal(coordinator.mac))
 
     if (mode_changed or gw_changed) and new_use_gw and new_sync_mode is not None:
         coordinator.set_pending_cmd("mode", int(new_sync_mode))
