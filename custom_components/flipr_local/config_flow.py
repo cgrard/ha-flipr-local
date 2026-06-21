@@ -55,6 +55,77 @@ MAC_PATTERN = re.compile(r"^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
 SYNC_MODE_OPTIONS = ["0", "1", "2", "3"]
 CHLORINE_MODEL_OPTIONS = ["chlorine", "bromine"]
 
+# Bounds (min, max, step) for every BOX number field, shared by the config and
+# options flows so the two cannot drift apart.
+NUM_FIELDS: dict[str, tuple[float, float, float]] = {
+    CONF_CYA: (0, 150, 1),
+    CONF_PH_CALIB_7: (0, 3000, 0.01),
+    CONF_PH_REF_7: (0, 14, 0.01),
+    CONF_PH_CALIB_4: (0, 3000, 0.01),
+    CONF_PH_REF_4: (0, 14, 0.01),
+    CONF_ORP_CALIB: (0, 1000, 1),
+    CONF_ORP_REF: (0, 1000, 1),
+    CONF_TEMP_OFFSET: (-5.0, 5.0, 0.1),
+    CONF_PH_MIN: (0, 14, 0.01),
+    CONF_PH_MAX: (0, 14, 0.01),
+    CONF_ORP_MIN: (0, 1200, 1),
+    CONF_ORP_MAX: (0, 1200, 1),
+    CONF_TEMP_MIN: (0, 50, 0.5),
+    CONF_TEMP_MAX: (0, 50, 0.5),
+}
+
+# The numeric sections, in display order.
+PROBE_FIELDS = (
+    CONF_PH_CALIB_7,
+    CONF_PH_REF_7,
+    CONF_PH_CALIB_4,
+    CONF_PH_REF_4,
+    CONF_ORP_CALIB,
+    CONF_ORP_REF,
+    CONF_TEMP_OFFSET,
+)
+THRESHOLD_FIELDS = (
+    CONF_PH_MIN,
+    CONF_PH_MAX,
+    CONF_ORP_MIN,
+    CONF_ORP_MAX,
+    CONF_TEMP_MIN,
+    CONF_TEMP_MAX,
+)
+
+
+def _number(field: str) -> selector.NumberSelector:
+    """A BOX number selector for `field`, using the shared NUM_FIELDS bounds."""
+    min_val, max_val, step = NUM_FIELDS[field]
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=min_val,
+            max=max_val,
+            step=step,
+            mode=selector.NumberSelectorMode.BOX,
+        )
+    )
+
+
+def _dropdown(options: list[str], translation_key: str) -> selector.SelectSelector:
+    """A DROPDOWN select selector with the given options and translation key."""
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=options,
+            mode=selector.SelectSelectorMode.DROPDOWN,
+            translation_key=translation_key,
+            sort=False,
+        )
+    )
+
+
+def _num_section(fields, defaults: dict, *, collapsed: bool):
+    """Build a collapsible section of BOX number fields from a defaults dict."""
+    return section(
+        vol.Schema({vol.Required(f, default=defaults[f]): _number(f) for f in fields}),
+        {"collapsed": collapsed},
+    )
+
 
 def _to_float(val: object) -> float:
     if isinstance(val, str):
@@ -87,6 +158,69 @@ def _flatten_sections(user_input: dict) -> dict:
     return flat
 
 
+def _check_min_max(
+    data: dict, key_min: str, key_max: str, error_key: str, cast=float
+) -> tuple[str, str] | None:
+    """Validate that data[key_min] < data[key_max] when both are present."""
+    if key_min not in data or key_max not in data:
+        return None
+    try:
+        lo = cast(_to_float(data[key_min]))
+        hi = cast(_to_float(data[key_max]))
+    except (ValueError, TypeError):
+        return (key_min, "unknown")
+    if lo >= hi:
+        return (key_min, error_key)
+    return None
+
+
+def _validate_ph_relationship(
+    raw_c4: float, raw_c7: float, ref4: float, ref7: float
+) -> tuple[str, str] | None:
+    """Check the pH calibration mV conversion, reference ranges and slope."""
+    try:
+        c4_mv = get_mv_from_input(raw_c4)
+    except ValueError:
+        return (CONF_PH_CALIB_4, "ph_mv_out_of_range")
+
+    try:
+        c7_mv = get_mv_from_input(raw_c7)
+    except ValueError:
+        return (CONF_PH_CALIB_7, "ph_mv_out_of_range")
+
+    if ref4 < 2.5 or ref4 > 5.5 or ref7 < 6.5 or ref7 > 7.5:
+        return (CONF_PH_REF_4, "ph_ref_out_of_range")
+    if abs(c7_mv - c4_mv) < 1.0:
+        return (CONF_PH_CALIB_7, "ph_calibration_equal")
+    if abs(ref7 - ref4) < 0.01:
+        return (CONF_PH_REF_7, "ph_reference_equal")
+    if c7_mv > c4_mv:
+        return (CONF_PH_CALIB_7, "ph_slope_mismatch")
+    return None
+
+
+def _normalize_calibration(
+    data: dict, raw_c4: float, raw_c7: float, ref4: float, ref7: float
+) -> dict:
+    """Return a copy of `data` with the calibration values coerced to numbers."""
+    normalized = dict(data)
+    normalized[CONF_PH_CALIB_4] = raw_c4
+    normalized[CONF_PH_CALIB_7] = raw_c7
+    normalized[CONF_PH_REF_4] = ref4
+    normalized[CONF_PH_REF_7] = ref7
+
+    if CONF_ORP_REF in data:
+        normalized[CONF_ORP_REF] = int(_to_float(data[CONF_ORP_REF]))
+    if CONF_ORP_CALIB in data:
+        normalized[CONF_ORP_CALIB] = int(_to_float(data[CONF_ORP_CALIB]))
+    if CONF_TEMP_OFFSET in data:
+        normalized[CONF_TEMP_OFFSET] = float(_to_float(data[CONF_TEMP_OFFSET]))
+    if CONF_CYA in data:
+        normalized[CONF_CYA] = int(_to_float(data[CONF_CYA]))
+
+    return normalized
+
+
 def validate_calibration(data: dict) -> dict | tuple[str, str]:
     # Parse each pH field individually so a parsing error is attributed to the
     # field that actually failed, instead of always blaming ph_calib_4.
@@ -107,68 +241,20 @@ def validate_calibration(data: dict) -> dict | tuple[str, str]:
     ref4 = parsed_ph[CONF_PH_REF_4]
     ref7 = parsed_ph[CONF_PH_REF_7]
 
-    try:
-        if CONF_PH_MIN in data and CONF_PH_MAX in data:
-            ph_min = _to_float(data[CONF_PH_MIN])
-            ph_max = _to_float(data[CONF_PH_MAX])
-            if ph_min >= ph_max:
-                return (CONF_PH_MIN, "ph_threshold_error")
-    except (ValueError, TypeError):
-        return (CONF_PH_MIN, "unknown")
+    for key_min, key_max, error_key, cast in (
+        (CONF_PH_MIN, CONF_PH_MAX, "ph_threshold_error", float),
+        (CONF_TEMP_MIN, CONF_TEMP_MAX, "temp_threshold_error", float),
+        (CONF_ORP_MIN, CONF_ORP_MAX, "orp_threshold_error", int),
+    ):
+        threshold_error = _check_min_max(data, key_min, key_max, error_key, cast)
+        if threshold_error is not None:
+            return threshold_error
 
-    try:
-        if CONF_TEMP_MIN in data and CONF_TEMP_MAX in data:
-            temp_min = _to_float(data[CONF_TEMP_MIN])
-            temp_max = _to_float(data[CONF_TEMP_MAX])
-            if temp_min >= temp_max:
-                return (CONF_TEMP_MIN, "temp_threshold_error")
-    except (ValueError, TypeError):
-        return (CONF_TEMP_MIN, "unknown")
+    relationship_error = _validate_ph_relationship(raw_c4, raw_c7, ref4, ref7)
+    if relationship_error is not None:
+        return relationship_error
 
-    try:
-        if CONF_ORP_MIN in data and CONF_ORP_MAX in data:
-            orp_min = int(_to_float(data[CONF_ORP_MIN]))
-            orp_max = int(_to_float(data[CONF_ORP_MAX]))
-            if orp_min >= orp_max:
-                return (CONF_ORP_MIN, "orp_threshold_error")
-    except (ValueError, TypeError):
-        return (CONF_ORP_MIN, "unknown")
-
-    try:
-        c4_mv = get_mv_from_input(raw_c4)
-    except ValueError:
-        return (CONF_PH_CALIB_4, "ph_mv_out_of_range")
-
-    try:
-        c7_mv = get_mv_from_input(raw_c7)
-    except ValueError:
-        return (CONF_PH_CALIB_7, "ph_mv_out_of_range")
-
-    if ref4 < 2.5 or ref4 > 5.5 or ref7 < 6.5 or ref7 > 7.5:
-        return (CONF_PH_REF_4, "ph_ref_out_of_range")
-    if abs(c7_mv - c4_mv) < 1.0:
-        return (CONF_PH_CALIB_7, "ph_calibration_equal")
-    if abs(ref7 - ref4) < 0.01:
-        return (CONF_PH_REF_7, "ph_reference_equal")
-    if c7_mv > c4_mv:
-        return (CONF_PH_CALIB_7, "ph_slope_mismatch")
-
-    normalized = dict(data)
-    normalized[CONF_PH_CALIB_4] = raw_c4
-    normalized[CONF_PH_CALIB_7] = raw_c7
-    normalized[CONF_PH_REF_4] = ref4
-    normalized[CONF_PH_REF_7] = ref7
-
-    if CONF_ORP_REF in data:
-        normalized[CONF_ORP_REF] = int(_to_float(data[CONF_ORP_REF]))
-    if CONF_ORP_CALIB in data:
-        normalized[CONF_ORP_CALIB] = int(_to_float(data[CONF_ORP_CALIB]))
-    if CONF_TEMP_OFFSET in data:
-        normalized[CONF_TEMP_OFFSET] = float(_to_float(data[CONF_TEMP_OFFSET]))
-    if CONF_CYA in data:
-        normalized[CONF_CYA] = int(_to_float(data[CONF_CYA]))
-
-    return normalized
+    return _normalize_calibration(data, raw_c4, raw_c7, ref4, ref7)
 
 
 class FliprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -322,102 +408,24 @@ class FliprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             vol.Required(CONF_USE_GATEWAY, default=True): bool,
                             vol.Required(
                                 CONF_CHLORINE_MODEL, default="chlorine"
-                            ): selector.SelectSelector(
-                                selector.SelectSelectorConfig(
-                                    options=CHLORINE_MODEL_OPTIONS,
-                                    mode=selector.SelectSelectorMode.DROPDOWN,
-                                    translation_key="chlorine_model",
-                                    sort=False,
-                                )
-                            ),
-                            vol.Required(CONF_CYA, default=40): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=0,
-                                    max=150,
-                                    step=1,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
+                            ): _dropdown(CHLORINE_MODEL_OPTIONS, "chlorine_model"),
+                            vol.Required(CONF_CYA, default=40): _number(CONF_CYA),
                         }
                     ),
                     {"collapsed": False},
                 ),
-                vol.Required("probes_calibration"): section(
-                    vol.Schema(
-                        {
-                            vol.Required(
-                                CONF_PH_CALIB_7, default=DEFAULT_PH_CALIB_7
-                            ): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=0,
-                                    max=3000,
-                                    step=0.01,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
-                            vol.Required(
-                                CONF_PH_REF_7, default=DEFAULT_PH_REF_7
-                            ): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=0,
-                                    max=14,
-                                    step=0.01,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
-                            vol.Required(
-                                CONF_PH_CALIB_4, default=DEFAULT_PH_CALIB_4
-                            ): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=0,
-                                    max=3000,
-                                    step=0.01,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
-                            vol.Required(
-                                CONF_PH_REF_4, default=DEFAULT_PH_REF_4
-                            ): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=0,
-                                    max=14,
-                                    step=0.01,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
-                            vol.Required(
-                                CONF_ORP_CALIB, default=int(DEFAULT_ORP_CALIB)
-                            ): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=0,
-                                    max=1000,
-                                    step=1,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
-                            vol.Required(
-                                CONF_ORP_REF, default=int(DEFAULT_ORP_REF)
-                            ): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=0,
-                                    max=1000,
-                                    step=1,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
-                            vol.Required(
-                                CONF_TEMP_OFFSET, default=0.0
-                            ): selector.NumberSelector(
-                                selector.NumberSelectorConfig(
-                                    min=-5.0,
-                                    max=5.0,
-                                    step=0.1,
-                                    mode=selector.NumberSelectorMode.BOX,
-                                )
-                            ),
-                        }
-                    ),
-                    {"collapsed": False},
+                vol.Required("probes_calibration"): _num_section(
+                    PROBE_FIELDS,
+                    {
+                        CONF_PH_CALIB_7: DEFAULT_PH_CALIB_7,
+                        CONF_PH_REF_7: DEFAULT_PH_REF_7,
+                        CONF_PH_CALIB_4: DEFAULT_PH_CALIB_4,
+                        CONF_PH_REF_4: DEFAULT_PH_REF_4,
+                        CONF_ORP_CALIB: int(DEFAULT_ORP_CALIB),
+                        CONF_ORP_REF: int(DEFAULT_ORP_REF),
+                        CONF_TEMP_OFFSET: 0.0,
+                    },
+                    collapsed=False,
                 ),
             }
         )
@@ -563,181 +571,41 @@ class FliprOptionsFlowHandler(config_entries.OptionsFlow):
                                 vol.Required(CONF_USE_GATEWAY, default=use_gw): bool,
                                 vol.Required(
                                     CONF_SYNC_MODE, default=str(sync_mode)
-                                ): selector.SelectSelector(
-                                    selector.SelectSelectorConfig(
-                                        options=SYNC_MODE_OPTIONS,
-                                        mode=selector.SelectSelectorMode.DROPDOWN,
-                                        translation_key="sync_mode",
-                                        sort=False,
-                                    )
-                                ),
+                                ): _dropdown(SYNC_MODE_OPTIONS, "sync_mode"),
                                 vol.Required(
                                     CONF_CHLORINE_MODEL, default=current_model
-                                ): selector.SelectSelector(
-                                    selector.SelectSelectorConfig(
-                                        options=CHLORINE_MODEL_OPTIONS,
-                                        mode=selector.SelectSelectorMode.DROPDOWN,
-                                        translation_key="chlorine_model",
-                                        sort=False,
-                                    )
-                                ),
+                                ): _dropdown(CHLORINE_MODEL_OPTIONS, "chlorine_model"),
                                 vol.Required(
                                     CONF_CYA, default=int(current_cya)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=150,
-                                        step=1,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
+                                ): _number(CONF_CYA),
                             }
                         ),
                         {"collapsed": False},
                     ),
-                    vol.Required("probes_calibration"): section(
-                        vol.Schema(
-                            {
-                                vol.Required(
-                                    CONF_PH_CALIB_7, default=float(c7)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=3000,
-                                        step=0.01,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_PH_REF_7, default=float(ph_ref_7)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=14,
-                                        step=0.01,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_PH_CALIB_4, default=float(c4)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=3000,
-                                        step=0.01,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_PH_REF_4, default=float(ph_ref_4)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=14,
-                                        step=0.01,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_ORP_CALIB, default=int(orp_measured)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=1000,
-                                        step=1,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_ORP_REF, default=int(orp_target)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=1000,
-                                        step=1,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_TEMP_OFFSET, default=float(temp_offset)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=-5.0,
-                                        max=5.0,
-                                        step=0.1,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                            }
-                        ),
-                        {"collapsed": True},
+                    vol.Required("probes_calibration"): _num_section(
+                        PROBE_FIELDS,
+                        {
+                            CONF_PH_CALIB_7: float(c7),
+                            CONF_PH_REF_7: float(ph_ref_7),
+                            CONF_PH_CALIB_4: float(c4),
+                            CONF_PH_REF_4: float(ph_ref_4),
+                            CONF_ORP_CALIB: int(orp_measured),
+                            CONF_ORP_REF: int(orp_target),
+                            CONF_TEMP_OFFSET: float(temp_offset),
+                        },
+                        collapsed=True,
                     ),
-                    vol.Required("alert_thresholds"): section(
-                        vol.Schema(
-                            {
-                                vol.Required(
-                                    CONF_PH_MIN, default=float(ph_min)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=14,
-                                        step=0.01,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_PH_MAX, default=float(ph_max)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=14,
-                                        step=0.01,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_ORP_MIN, default=int(orp_min)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=1200,
-                                        step=1,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_ORP_MAX, default=int(orp_max)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=1200,
-                                        step=1,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_TEMP_MIN, default=float(temp_min)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=50,
-                                        step=0.5,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                                vol.Required(
-                                    CONF_TEMP_MAX, default=float(temp_max)
-                                ): selector.NumberSelector(
-                                    selector.NumberSelectorConfig(
-                                        min=0,
-                                        max=50,
-                                        step=0.5,
-                                        mode=selector.NumberSelectorMode.BOX,
-                                    )
-                                ),
-                            }
-                        ),
-                        {"collapsed": True},
+                    vol.Required("alert_thresholds"): _num_section(
+                        THRESHOLD_FIELDS,
+                        {
+                            CONF_PH_MIN: float(ph_min),
+                            CONF_PH_MAX: float(ph_max),
+                            CONF_ORP_MIN: int(orp_min),
+                            CONF_ORP_MAX: int(orp_max),
+                            CONF_TEMP_MIN: float(temp_min),
+                            CONF_TEMP_MAX: float(temp_max),
+                        },
+                        collapsed=True,
                     ),
                 }
             ),
