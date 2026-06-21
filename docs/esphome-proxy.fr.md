@@ -1,4 +1,4 @@
-[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](#) [![English](https://img.shields.io/badge/Language-English-red)](gateway-esphome-proxy.en.md)
+[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](#) [![English](https://img.shields.io/badge/Language-English-red)](esphome-proxy.en.md)
 
 # Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome
 

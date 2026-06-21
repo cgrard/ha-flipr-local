@@ -176,6 +176,8 @@ Une fois l'appareil ajouté, vous pouvez cliquer sur **Configurer** ⚙️ pour 
 * Modifier les paramètres de votre eau (TAC, TH, TDS, Stabilisant) via le tableau de bord.
 * Définir vos **seuils d'alerte personnalisés** (pH Min/Max, ORP Min/Max, etc.) pour piloter vos propres automatisations.
 
+> 🎛️ Pour un pas-à-pas de la calibration des sondes et des seuils d'alerte, voir le [Guide de Calibration](docs/calibration.fr.md).
+
 ---
 
 ### 🐛 Dépannage
@@ -207,7 +209,7 @@ Retirez les anciennes sondes, nettoyez la base blanche. Branchez les adaptateurs
 
 </details>
 
-> 📡 **Recyclez la passerelle WiFi** : plutôt que d'acheter un ESP32 dédié, vous pouvez reflasher la passerelle WiFi Flipr devenue inutile en proxy Bluetooth ESPHome. Voir le guide complet de reverse engineering : [Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome](docs/passerelle-esphome-proxy.fr.md).
+> 📡 **Recyclez la passerelle WiFi** : plutôt que d'acheter un ESP32 dédié, vous pouvez reflasher la passerelle WiFi Flipr devenue inutile en proxy Bluetooth ESPHome. Voir le guide complet de reverse engineering : [Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome](docs/esphome-proxy.fr.md).
 
 ---
 

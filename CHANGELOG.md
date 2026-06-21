@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   logging for the integration also covers its Bluetooth dependencies.
 - Hardware guide (FR and EN) on recycling the obsolete Flipr WiFi gateway into
   an ESPHome Bluetooth proxy, linked from the README Hardware Rescue section.
+- English version of the calibration guide. The guides now live under `docs/`
+  with a uniform `<topic>.<lang>.md` naming, and the calibration guide (which
+  was previously unlinked) is referenced from both READMEs.
 
 ### Changed
 - Exposed a public `is_shutdown` coordinator property; entities no longer read

@@ -1,3 +1,5 @@
+[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](#) [![English](https://img.shields.io/badge/Language-English-red)](calibration.en.md)
+
 # 🎛️ Guide de Calibration - Flipr Local
 
 Ce document explique comment configurer et affiner la calibration de votre sonde Flipr directement depuis l'interface de Home Assistant. 💡
@@ -11,12 +13,12 @@ L'intégration **Flipr Local** est conçue pour être flexible et s'adapter à v
 ### 📱 Méthode A : Les valeurs de l'application officielle
 Si vous n'avez pas vos données brutes, ouvrez simplement l'application officielle Flipr, allez dans **Menu > Mode Expert > Vue Expert** 🔍 et relevez les valeurs de pH affichées (ex : `8.40` et `6.02`). Saisissez ces valeurs directement dans Home Assistant.
 
-<img src="docs/screenshots/flipr_calibration.png" width="400" alt="Calibration Flipr">
+<img src="screenshots/flipr_calibration.png" width="400" alt="Calibration Flipr">
 
 ### ⚡ Méthode B : Les valeurs brutes en millivolts (Avancé)
 L'intégration remonte une entité `sensor.*_ph_brut_mv` qui vous affiche la tension brute de votre sonde pH en mV 📉. Relevez la valeur une fois le Flipr plongé et stabilisé dans la solution de calibration (ex : `1600` ou `1900`), puis saisissez ces valeurs directement dans la configuration via l'icône de la roue crantée.
 
-![pH Brut (mV)](docs/screenshots/raw_ph_values_mv.png)
+![pH Brut (mV)](screenshots/raw_ph_values_mv.png)
 
 ---
 
@@ -29,7 +31,7 @@ Le pH d'une solution tampon varie légèrement en fonction de sa température au
 * 📊 Vous y verrez un tableau indiquant la valeur exacte selon la température du liquide.
 * 🎯 **Exemple :** À 20°C, une solution pH 7 vaut en réalité **7.02**. 
 
-<img src="docs/screenshots/ph_calibration_targets.png" width="500" alt="Cible de la solution pH">
+<img src="screenshots/ph_calibration_targets.png" width="500" alt="Cible de la solution pH">
 
 C'est cette valeur très précise que vous devez saisir dans les champs **Cible de la solution**. ✅
 
@@ -45,4 +47,4 @@ L'intégration crée automatiquement des capteurs binaires de statut (pH Statut,
 
 Si l'une des mesures dépasse ces seuils, le capteur passera à l'état "Problème" ⚠️, ce qui est idéal pour déclencher vos automatisations (notifications 📱, mise en route de la filtration 🔄, etc.).
 
-<img src="docs/screenshots/alert_thresholds.png" width="500" alt="Seuils">
+<img src="screenshots/alert_thresholds.png" width="500" alt="Seuils">

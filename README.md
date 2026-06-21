@@ -176,6 +176,8 @@ Once the device is added, you can click on **Configure** ⚙️ to:
 * Modify your water parameters (TAC, TH, TDS, Stabilizer) via the dashboard.
 * Define your **custom alert thresholds** (Min/Max pH, Min/Max ORP, etc.) to trigger your own automations.
 
+> 🎛️ For a step-by-step walkthrough of probe calibration and alert thresholds, see the [Calibration Guide](docs/calibration.en.md).
+
 ---
 
 ### 🐛 Troubleshooting
@@ -207,7 +209,7 @@ Remove the old probes, clean the white base. Plug the MMCX adapters into the mot
 
 </details>
 
-> 📡 **Recycle the WiFi gateway**: rather than buying a dedicated ESP32, you can reflash the obsolete Flipr WiFi gateway into an ESPHome Bluetooth proxy. See the full reverse-engineering guide: [Recycling the Flipr WiFi gateway into an ESPHome Bluetooth proxy](docs/gateway-esphome-proxy.en.md).
+> 📡 **Recycle the WiFi gateway**: rather than buying a dedicated ESP32, you can reflash the obsolete Flipr WiFi gateway into an ESPHome Bluetooth proxy. See the full reverse-engineering guide: [Recycling the Flipr WiFi gateway into an ESPHome Bluetooth proxy](docs/esphome-proxy.en.md).
 
 ---
 
