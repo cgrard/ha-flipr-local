@@ -11,9 +11,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.flipr_local import FliprDataCoordinator
 import custom_components.flipr_local as integration
+import custom_components.flipr_local.sensor as sensor_mod
 from custom_components.flipr_local.const import (
     BT_STATUS_ERROR_RETRY,
     BT_STATUS_SUCCESS,
+    CONF_CHLORINE_MODEL,
     CONF_MAC_ADDRESS,
     CONF_MODEL,
     DOMAIN,
@@ -197,10 +199,10 @@ async def test_write_timeout_triggers_retry(hass, monkeypatch):
 async def test_save_and_restore_roundtrip(hass, monkeypatch):
     """Data saved to the Store is restored by a fresh coordinator."""
     monkeypatch.setattr(
-        integration, "async_track_unavailable", lambda *a, **k: (lambda: None)
+        integration, "async_track_unavailable", lambda *a, **k: lambda: None
     )
     monkeypatch.setattr(
-        integration, "async_register_callback", lambda *a, **k: (lambda: None)
+        integration, "async_register_callback", lambda *a, **k: lambda: None
     )
     monkeypatch.setattr(integration, "async_scanner_count", lambda *a, **k: 0)
     monkeypatch.setattr(integration, "async_last_service_info", lambda *a, **k: None)
@@ -225,3 +227,90 @@ async def test_save_and_restore_roundtrip(hass, monkeypatch):
         assert loader.data.get("ph") == 7.2
     finally:
         await loader.async_shutdown()
+
+
+def _stub_ble_callbacks(monkeypatch):
+    """Neutralise the bluetooth helpers used during entry setup/initialize."""
+    for mod in (integration, sensor_mod):
+        monkeypatch.setattr(
+            mod, "async_register_callback", lambda *a, **k: lambda: None, raising=False
+        )
+        monkeypatch.setattr(
+            mod, "async_last_service_info", lambda *a, **k: None, raising=False
+        )
+        monkeypatch.setattr(
+            mod, "async_scanner_count", lambda *a, **k: 0, raising=False
+        )
+    monkeypatch.setattr(
+        integration, "async_track_unavailable", lambda *a, **k: lambda: None
+    )
+
+
+async def test_recompute_derived_values_full_pipeline(hass):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_MAC_ADDRESS: MAC, CONF_MODEL: "Flipr AnalysR 3"},
+        options={},
+        title="Flipr AnalysR 3",
+    )
+    entry.add_to_hass(hass)
+    coord = FliprDataCoordinator(hass, entry, MAC, MAC)
+    coord.data.update(
+        {
+            "temp_raw": 25.0,
+            "ph_raw": 1600,
+            "orp_raw": 650,
+            "tac": 100,
+            "th": 200,
+            "tds": 1000,
+            "cya": 40,
+        }
+    )
+
+    coord.recompute_derived_values()
+
+    assert coord.data["temperature"] == 25.0
+    assert coord.data["orp"] == 650
+    assert "ph" in coord.data
+    assert coord.data["lsi"] is not None
+    assert coord.data["target_equilibrium_ph"] is not None
+    assert coord.data["estimated_free_chlorine"] is not None
+
+
+async def test_recompute_bromine_and_missing_water_params(hass):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_MAC_ADDRESS: MAC, CONF_MODEL: "X"},
+        options={CONF_CHLORINE_MODEL: "bromine"},
+        title="X",
+    )
+    entry.add_to_hass(hass)
+    coord = FliprDataCoordinator(hass, entry, MAC, MAC)
+    coord.data.update({"temp_raw": 25.0, "ph_raw": 1600, "orp_raw": 650})  # no TAC/TH
+
+    coord.recompute_derived_values()
+
+    assert coord.data["lsi"] is None  # missing TAC/TH -> not computable
+    assert coord.data["lsi_status"] == "unknown"
+    assert coord.data["estimated_free_chlorine"] is None  # bromine -> no chlorine
+
+
+async def test_setup_and_unload_entry(hass, monkeypatch):
+    _stub_ble_callbacks(monkeypatch)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_MAC_ADDRESS: MAC, CONF_MODEL: "Flipr AnalysR 3"},
+        options={},
+        title="Flipr AnalysR 3",
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    entity_ids = hass.states.async_entity_ids()
+    assert any(eid.startswith("sensor.") for eid in entity_ids)
+    assert any(eid.startswith("switch.") for eid in entity_ids)
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()

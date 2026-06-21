@@ -154,3 +154,32 @@ def test_chain_active_chlorine_drops_with_ph():
     active_high = compute_active_chlorine_from_fc(fc_high, ph=8.0, temp_c=25, cya=40)
     assert active_low > active_high
     assert not math.isnan(active_low)
+
+
+# ==========================================
+# Error / edge branches
+# ==========================================
+
+
+def test_isl_none_and_invalid_temperature():
+    assert compute_isl(None, 7.2, 100, 200, 1000) is None
+    # A temperature below absolute zero makes log10 fail -> handled, returns None.
+    assert compute_isl(-300, 7.2, 100, 200, 1000) is None
+
+
+def test_equilibrium_none_and_invalid_temperature():
+    assert compute_ph_equilibrium(None, 100, 200, 1000) is None
+    assert compute_ph_equilibrium(-300, 100, 200, 1000) is None
+
+
+def test_free_chlorine_low_orp_and_high_ph_branches():
+    # ORP below the 415 mV floor still returns a value (clamped).
+    assert estimate_free_chlorine(400, 7.4) is not None
+    # pH above 12.88 floors the amplifier; the huge exponent overflows and is
+    # caught, returning None instead of crashing.
+    assert estimate_free_chlorine(650, 13.0) is None
+
+
+def test_active_chlorine_temperature_is_clamped():
+    # 70 C is outside the HOCl pKa range and gets clamped, no crash.
+    assert compute_active_chlorine_from_fc(2.0, 7.4, 70.0, 40) is not None
