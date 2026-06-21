@@ -14,7 +14,9 @@ def get_mv_from_input(val: float | int | str) -> float:
     try:
         val_f = float(val)
     except (ValueError, TypeError) as err:
-        _LOGGER.error("Invalid calibration value: %s", val)
+        # Logged at debug: the raised ValueError already carries the value and is
+        # caught and surfaced to the user by the config flow.
+        _LOGGER.debug("Invalid calibration value: %s", val)
         raise ValueError(f"Invalid calibration value: {val!r}") from err
 
     if 2.0 <= val_f <= 14.0:
@@ -104,7 +106,7 @@ def estimate_free_chlorine(orp: float, ph: float, cya: float = 40.0) -> float | 
         return round(max(0.0, min(fc_estimated, 15.0)), 2)
 
     except (ValueError, OverflowError, ZeroDivisionError) as e:
-        _LOGGER.error("Mathematical error in estimate_free_chlorine: %s", e)
+        _LOGGER.debug("Mathematical error in estimate_free_chlorine: %s", e)
         return None
 
 
@@ -145,5 +147,5 @@ def compute_active_chlorine_from_fc(
         )
         return round(max(0.0, active_chlorine), 4)
     except Exception as e:
-        _LOGGER.error("Error in compute_active_chlorine_from_fc: %s", e)
+        _LOGGER.debug("Error in compute_active_chlorine_from_fc: %s", e)
         return None

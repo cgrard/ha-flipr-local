@@ -81,17 +81,15 @@ class FliprForceAnalysisButton(CoordinatorEntity, ButtonEntity):
                     timeout=TIMEOUT_FORCE_REFRESH,
                 )
             except asyncio.TimeoutError:
-                _LOGGER.error(
+                # A timeout is a soft, recoverable outcome; a traceback adds nothing.
+                _LOGGER.warning(
                     "Analysis exceeded timeout of %s seconds for %s",
                     TIMEOUT_FORCE_REFRESH,
                     self.coordinator.safe_mac,
                 )
-            except Exception as err:
-                _LOGGER.error(
-                    "Analysis failed for %s: %s",
-                    self.coordinator.safe_mac,
-                    err,
-                )
+            except Exception:
+                # Unexpected failure: log with the traceback to aid debugging.
+                _LOGGER.exception("Analysis failed for %s", self.coordinator.safe_mac)
             finally:
                 self.coordinator.update_volatile_state({"action_running": False})
 

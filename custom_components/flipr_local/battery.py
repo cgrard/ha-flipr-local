@@ -1,6 +1,8 @@
 # Copyright (c) 2026 Adrien40
 # This file is part of Flipr Local.
 
+from itertools import pairwise
+
 # State-of-charge model for the Saft LS26500 (Li-SOCl2) primary cell used by the
 # Flipr AnalysR.
 #
@@ -45,7 +47,7 @@ def battery_percent_from_mv(mv: float) -> int:
     if mv <= points[-1][0]:
         return int(round(points[-1][1]))
 
-    for (hi_mv, hi_pct), (lo_mv, lo_pct) in zip(points, points[1:]):
+    for (hi_mv, hi_pct), (lo_mv, lo_pct) in pairwise(points):
         if lo_mv <= mv <= hi_mv:
             fraction = (mv - lo_mv) / (hi_mv - lo_mv)
             return int(round(lo_pct + fraction * (hi_pct - lo_pct)))
