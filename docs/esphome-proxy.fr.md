@@ -479,6 +479,7 @@ esp32_ble_tracker:
     active: true
 
 bluetooth_proxy:
+  active: true
 
 binary_sensor:
   - platform: ble_presence
