@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.1] - 2026-06-21
+## [1.2.0] - 2026-06-21
 
 ### Added
 
@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the private attribute.
 - Translated the remaining French code comments to English and added the
   offending value to the `get_mv_from_input` error for clearer logs.
-- Set `manifest.json` version to `1.1.1` (it had been left at `1.0.0`, never
+- Set `manifest.json` version to `1.2.0` (it had been left at `1.0.0`, never
   bumped for the 1.1.0 release).
 - Replaced the linear battery percentage with a Li-SOCl2 (Saft LS26500)
   discharge curve in `battery.py`. The previous linear 2500-3600 mV mapping did
@@ -89,6 +89,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (TAC, TH, TDS, CyA) and alert thresholds via the options flow.
 - Chlorine/bromine model selection, sync-mode control and gateway mode.
 
-[1.1.1]: https://github.com/Adrien40/ha-flipr-local/compare/v1.1.0...v1.1.1
+[1.2.0]: https://github.com/Adrien40/ha-flipr-local/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Adrien40/ha-flipr-local/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Adrien40/ha-flipr-local/releases/tag/v1.0.0
