@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   offending value to the `get_mv_from_input` error for clearer logs.
 - Set `manifest.json` version to `1.1.1` (it had been left at `1.0.0`, never
   bumped for the 1.1.0 release).
+- Replaced the linear battery percentage with a Li-SOCl2 (Saft LS26500)
+  discharge curve in `battery.py`. The previous linear 2500-3600 mV mapping did
+  not fit this chemistry's flat plateau and gave almost no end-of-life warning;
+  the new piecewise curve stays near full across the plateau and drops through
+  the knee where the voltage is actually informative.
 
 ### Fixed
 
