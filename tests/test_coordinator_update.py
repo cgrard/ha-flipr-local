@@ -1,15 +1,18 @@
 # Copyright (c) 2026 Adrien40
 # This file is part of Flipr Local.
 
+import asyncio
 from time import monotonic
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.flipr_local import FliprDataCoordinator
 import custom_components.flipr_local as integration
 from custom_components.flipr_local.const import (
+    BT_STATUS_ERROR_RETRY,
     BT_STATUS_SUCCESS,
     CONF_MAC_ADDRESS,
     CONF_MODEL,
@@ -143,3 +146,82 @@ async def test_start_max_poll_cycle_returns_parsed_data(hass, monkeypatch):
     assert data["sync_mode"] == "1"
     assert data["raw_frame"] == frame.hex().upper()
     assert data["bluetooth_status"] == BT_STATUS_SUCCESS
+
+
+async def test_standby_frame_raises_without_history(hass, monkeypatch):
+    """An all-zero (standby) frame with no stored history raises UpdateFailed."""
+    client = FakeClient(b"\x00" * 13)
+    _patch_ble(monkeypatch, client)
+
+    coordinator = await _make_coordinator(hass)
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+
+
+async def test_parse_failure_triggers_retry(hass, monkeypatch):
+    """An implausible frame is rejected and schedules a retry."""
+    client = FakeClient(_frame(ph_mv=100))  # 100 mV is below the 500 mV floor
+    _patch_ble(monkeypatch, client)
+
+    coordinator = await _make_coordinator(hass)
+    try:
+        data = await coordinator._async_update_data()
+        assert data["bluetooth_status"] == BT_STATUS_ERROR_RETRY
+    finally:
+        coordinator._cancel_pending_retry()
+
+
+async def test_write_timeout_triggers_retry(hass, monkeypatch):
+    """Two failed GATT writes mark a write failure and schedule a retry."""
+
+    async def _instant_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr(integration.asyncio, "sleep", _instant_sleep)
+
+    class TimeoutClient(FakeClient):
+        async def write_gatt_char(self, char, data, response=False):
+            raise asyncio.TimeoutError()
+
+    client = TimeoutClient(_frame())
+    _patch_ble(monkeypatch, client)
+
+    coordinator = await _make_coordinator(hass)
+    try:
+        data = await coordinator._async_update_data()
+        assert data["bluetooth_status"] == BT_STATUS_ERROR_RETRY
+    finally:
+        coordinator._cancel_pending_retry()
+
+
+async def test_save_and_restore_roundtrip(hass, monkeypatch):
+    """Data saved to the Store is restored by a fresh coordinator."""
+    monkeypatch.setattr(
+        integration, "async_track_unavailable", lambda *a, **k: (lambda: None)
+    )
+    monkeypatch.setattr(
+        integration, "async_register_callback", lambda *a, **k: (lambda: None)
+    )
+    monkeypatch.setattr(integration, "async_scanner_count", lambda *a, **k: 0)
+    monkeypatch.setattr(integration, "async_last_service_info", lambda *a, **k: None)
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_MAC_ADDRESS: MAC, CONF_MODEL: "Flipr AnalysR 3"},
+        options={},
+        title="Flipr AnalysR 3",
+    )
+    entry.add_to_hass(hass)
+
+    saver = FliprDataCoordinator(hass, entry, MAC, MAC)
+    saver.data.update({"ph_raw": 1600, "raw_frame": "ABCDEF", "ph": 7.2})
+    await saver.async_save_to_disk()
+
+    loader = FliprDataCoordinator(hass, entry, MAC, MAC)
+    await loader.async_initialize()
+    try:
+        assert loader.data.get("ph_raw") == 1600
+        assert loader.data.get("raw_frame") == "ABCDEF"
+        assert loader.data.get("ph") == 7.2
+    finally:
+        await loader.async_shutdown()
