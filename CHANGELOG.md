@@ -28,8 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   files lint cleanly.
 - Unit tests for the previously untested pure logic: calibration validation
   (`validate_calibration`, `_flatten_sections`), BLE frame parsing
-  (`_parse_raw_frame`), pH calibration math (`_compute_ph_calibrated`) and
-  model detection (`get_flipr_model`).
+  (`_parse_raw_frame`), pH calibration math (`_compute_ph_calibrated`),
+  command selection (`_select_command`) and model detection (`get_flipr_model`).
+- Mocked integration tests covering a full coordinator update cycle (connect,
+  write, notify and Start Max poll paths) end to end.
 
 ### Changed
 
@@ -57,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   setup boilerplate, and the dispatcher signal is centralised in
   `options_updated_signal` (one sender, four receivers) with a small entity mixin
   for the subscription wiring.
+- Decomposed the 420-line `_async_update_data` with no behaviour change:
+  extracted focused helpers (command selection, frame assembly, the two read
+  strategies and the `_run_ble_exchange` block), cutting its complexity from 47
+  to 11. The extraction is covered by the new mocked integration tests.
 
 ### Fixed
 
