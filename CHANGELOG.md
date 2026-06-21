@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`itertools.pairwise`, `ClassVar`, `raise ... from None`, `contextlib.suppress`),
   hoisted the per-call sensor icon dictionaries to module constants, and lowered
   the chemistry "could not compute" logs from error to debug to cut log noise.
+- Refactored `config_flow.py` with no behaviour change: drive every number field
+  from a shared bounds table so the config and options flows can no longer drift
+  apart (the calibration and threshold sections were fully duplicated), and split
+  `validate_calibration` into focused helpers. New tests lock the schema builders.
 
 ### Fixed
 
