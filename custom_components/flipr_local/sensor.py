@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from datetime import datetime as dt_datetime
-from typing import Any
+from typing import Any, ClassVar
 import logging
 import homeassistant.util.dt as dt_util
 from homeassistant.components.sensor import (
@@ -303,12 +303,36 @@ class FliprSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.data.get(self._key)
 
 
+_SYNC_MODE_ICONS = {
+    "0": "mdi:power-sleep",
+    "1": "mdi:waves",
+    "2": "mdi:leaf",
+    "3": "mdi:rocket-launch",
+}
+
+_BT_STATUS_ICONS = {
+    BT_STATUS_WAITING: "mdi:bluetooth-off",
+    BT_STATUS_CONNECTING: "mdi:bluetooth-connect",
+    BT_STATUS_WAKING_UP: "mdi:bluetooth-audio",
+    BT_STATUS_REQUESTING: "mdi:bluetooth-transfer",
+    BT_STATUS_READING: "mdi:bluetooth-transfer",
+    BT_STATUS_WRITING_SYNC: "mdi:bluetooth-settings",
+    BT_STATUS_SUCCESS: "mdi:bluetooth",
+    BT_STATUS_SYNC_APPLIED: "mdi:bluetooth-connect",
+    BT_STATUS_ERROR: "mdi:bluetooth-off",
+    BT_STATUS_ERROR_RETRY: "mdi:timer-sand",
+    BT_STATUS_WRITE_FAILED: "mdi:alert-circle",
+    BT_STATUS_PAUSED: "mdi:pause-circle",
+    BT_STATUS_OUT_OF_RANGE: "mdi:bluetooth-off",
+}
+
+
 class FliprSyncModeSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_translation_key = "sync_mode_state"
-    _attr_options = ["0", "1", "2", "3"]
+    _attr_options: ClassVar[list[str]] = ["0", "1", "2", "3"]
 
     def __init__(self, coordinator, mac: str, model_name: str) -> None:
         super().__init__(coordinator)
@@ -325,13 +349,7 @@ class FliprSyncModeSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def icon(self) -> str:
-        icons = {
-            "0": "mdi:power-sleep",
-            "1": "mdi:waves",
-            "2": "mdi:leaf",
-            "3": "mdi:rocket-launch",
-        }
-        return icons.get(self.native_value or "", "mdi:sync-alert")
+        return _SYNC_MODE_ICONS.get(self.native_value or "", "mdi:sync-alert")
 
 
 class FliprBluetoothStatusSensor(CoordinatorEntity, SensorEntity):
@@ -339,21 +357,7 @@ class FliprBluetoothStatusSensor(CoordinatorEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_translation_key = "bluetooth_status"
-    _attr_options = [
-        BT_STATUS_WAITING,
-        BT_STATUS_CONNECTING,
-        BT_STATUS_WAKING_UP,
-        BT_STATUS_REQUESTING,
-        BT_STATUS_READING,
-        BT_STATUS_WRITING_SYNC,
-        BT_STATUS_SUCCESS,
-        BT_STATUS_SYNC_APPLIED,
-        BT_STATUS_ERROR,
-        BT_STATUS_ERROR_RETRY,
-        BT_STATUS_WRITE_FAILED,
-        BT_STATUS_PAUSED,
-        BT_STATUS_OUT_OF_RANGE,
-    ]
+    _attr_options: ClassVar[list[str]] = list(_BT_STATUS_ICONS)
 
     def __init__(self, coordinator, mac: str, model_name: str) -> None:
         super().__init__(coordinator)
@@ -369,22 +373,7 @@ class FliprBluetoothStatusSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def icon(self) -> str:
-        icons = {
-            BT_STATUS_WAITING: "mdi:bluetooth-off",
-            BT_STATUS_CONNECTING: "mdi:bluetooth-connect",
-            BT_STATUS_WAKING_UP: "mdi:bluetooth-audio",
-            BT_STATUS_REQUESTING: "mdi:bluetooth-transfer",
-            BT_STATUS_READING: "mdi:bluetooth-transfer",
-            BT_STATUS_WRITING_SYNC: "mdi:bluetooth-settings",
-            BT_STATUS_SUCCESS: "mdi:bluetooth",
-            BT_STATUS_SYNC_APPLIED: "mdi:bluetooth-connect",
-            BT_STATUS_ERROR: "mdi:bluetooth-off",
-            BT_STATUS_ERROR_RETRY: "mdi:timer-sand",
-            BT_STATUS_WRITE_FAILED: "mdi:alert-circle",
-            BT_STATUS_PAUSED: "mdi:pause-circle",
-            BT_STATUS_OUT_OF_RANGE: "mdi:bluetooth-off",
-        }
-        return icons.get(self.native_value, "mdi:bluetooth-alert")
+        return _BT_STATUS_ICONS.get(self.native_value, "mdi:bluetooth-alert")
 
 
 class FliprRealTimeRSSISensor(RestoreSensor):

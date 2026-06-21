@@ -3,6 +3,7 @@
 
 import logging
 import asyncio
+import contextlib
 from typing import Any
 import homeassistant.util.dt as dt_util
 from bleak import BleakClient
@@ -904,17 +905,15 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                         return dict(self.data)
                     raise UpdateFailed(
                         f"Flipr {self.safe_mac} unreachable after {TIMEOUT_BLE_CONN}s and no advertisement"
-                    )
+                    ) from None
             except Exception as err:
                 return self._handle_ble_error(
                     f"Communication error: {err}", BT_STATUS_ERROR
                 )
             finally:
                 if notify_started and client and client.is_connected:
-                    try:
+                    with contextlib.suppress(Exception):
                         await client.stop_notify(FLIPR_CHARACTERISTIC_UUID)
-                    except Exception:
-                        pass
                 await _safely_disconnect(client)
 
         self.retry_count = 0

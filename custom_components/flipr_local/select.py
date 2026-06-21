@@ -1,6 +1,8 @@
 # Copyright (c) 2026 Adrien40
 # This file is part of Flipr Local.
 
+from typing import ClassVar
+
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
@@ -31,7 +33,7 @@ class FliprModelSelect(CoordinatorEntity, SelectEntity):
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG
     _attr_translation_key = "chlorine_model"
-    _attr_options = ["chlorine", "bromine"]
+    _attr_options: ClassVar[list[str]] = ["chlorine", "bromine"]
 
     def __init__(self, coordinator, entry_id: str, mac: str, model_name: str) -> None:
         super().__init__(coordinator)
