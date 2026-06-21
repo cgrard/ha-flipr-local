@@ -1,17 +1,24 @@
-# 🏊‍♂️ Flipr Local pour Home Assistant
+# 🏊‍♂️ Flipr Local for Home Assistant
 
-Bienvenue sur l'intégration locale et sans cloud pour les sondes de piscine **Flipr AnalysR**.
+A **100% local, cloud-free** integration for **Flipr AnalysR** pool probes.
 
-Suite à la liquidation de l'entreprise CTAC-TECH (Flipr), les serveurs officiels menacent de fermer, rendant les sondes potentiellement inutilisables. Cette intégration a été créée pour **sauver votre matériel** en interceptant directement les trames Bluetooth Low Energy (BLE) émises par la sonde, sans jamais passer par internet.
+After the liquidation of CTAC-TECH (Flipr), the official servers may shut down, potentially bricking the probes. This integration **rescues your hardware** by reading the probe's Bluetooth Low Energy (BLE) frames directly, without ever going through the internet.
 
-## ✨ Fonctionnalités
-* **100% Local :** Dépendance cloud supprimée. Fonctionne via l'antenne Bluetooth de votre serveur ou via des Proxy ESPHome.
-* **Chlore Actif (HOCl) :** Modèle thermodynamique (fraction HOCl calculée via le pKa dépendant de la température) tenant compte du pH, de la température et du stabilisant (CyA), pour estimer le pouvoir désinfectant réel au-delà de la simple lecture ORP.
-* **Lecture Active (Pump Control) :** Déclenchement manuel de la pompe d'analyse (Wait-and-Read) reproduisant le comportement natif de l'application.
-* **Métriques complètes :** Température, pH, Redox (ORP), Batterie, Indice de Langelier (ISL) et Qualité du signal Bluetooth (RSSI).
+## ✨ Highlights
 
-## ⚠️ Prérequis important
-Cette intégration nécessite une excellente couverture Bluetooth. Les piscines étant des milieux très contraignants pour les ondes radio (l'eau absorbe les signaux), l'utilisation d'un **Proxy Bluetooth ESPHome** placé au plus près du bassin est fortement recommandée pour une stabilité optimale.
+* **100% local:** no cloud dependency. Works through your server's Bluetooth adapter or an ESPHome Bluetooth Proxy.
+* **Active Chlorine (HOCl):** thermodynamic model (HOCl fraction from the temperature-dependent pKa) accounting for pH, temperature and stabilizer (CyA), to estimate the real disinfection power beyond a raw ORP reading.
+* **On-demand analysis:** manually trigger the probe's measurement pump (wait-and-read), mirroring the official app's behavior.
+* **Full metrics:** Temperature, pH, ORP (Redox), Battery, Langelier Saturation Index (LSI) and Bluetooth signal quality (RSSI).
+
+## ⚠️ Important prerequisite
+
+This integration needs solid Bluetooth coverage. Pools are harsh environments for radio (water absorbs the signal), so an **ESPHome Bluetooth Proxy** placed as close to the pool as possible is strongly recommended for stability.
+
+## 📖 Documentation
+
+* 📘 **Full guide (English):** [README.md](https://github.com/Adrien40/ha-flipr-local/blob/main/README.md)
+* 🇫🇷 **Guide complet (français) :** [README.fr.md](https://github.com/Adrien40/ha-flipr-local/blob/main/README.fr.md)
 
 ---
-*Développé par un passionné, pour la communauté.*
+*Developed by an enthusiast, for the community.*
