@@ -582,6 +582,187 @@ class FliprDataCoordinator(DataUpdateCoordinator):
 
         return raw_temp, ph_raw_mv, raw_orp, sync_mode_raw, bat_raw
 
+    def _data_or_fail(self, message: str) -> dict[str, Any]:
+        """Return the last known data if we have history, else raise UpdateFailed."""
+        if self.data.get("ph_raw") is not None:
+            return dict(self.data)
+        raise UpdateFailed(message)
+
+    def _go_out_of_range(self, message: str) -> dict[str, Any]:
+        """Mark out of range, reset retries, then return cached data or fail."""
+        self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
+        self.retry_count = 0
+        self._cancel_pending_retry()
+        return self._data_or_fail(message)
+
+    def _select_command(self, entry: ConfigEntry) -> tuple[str, int, str]:
+        """Return (cmd_type, cmd_val, target_uuid) for this cycle's GATT write.
+
+        On the very first cycle (not yet init-done) the command comes from the
+        gateway/sync configuration; afterwards it comes from the pending command.
+        """
+        if not self._init_done:
+            if _get_opt(entry, CONF_USE_GATEWAY, True):
+                cmd_type, cmd_val = "mode", int(_get_opt(entry, CONF_SYNC_MODE, "2"))
+            else:
+                cmd_type, cmd_val = "analyze", 0x01
+        else:
+            cmd_type, cmd_val = self._pending_cmd_type, self._pending_cmd_val
+        target_uuid = SYNC_CHAR_UUID if cmd_type == "mode" else FLIPR_ANALYZE_UUID
+        return cmd_type, cmd_val, target_uuid
+
+    def _assemble_new_data(
+        self, payload: bytes, entry: ConfigEntry, cmd_type: str
+    ) -> dict[str, Any]:
+        """Parse a received frame and build the coordinator data dict.
+
+        Returns the new data, or an error-status dict (standby / parse failure)
+        produced by _handle_ble_error.
+        """
+        data = payload
+        hex_frame = data.hex().upper()
+
+        if hex_frame.startswith("0000"):
+            # Device in standby — reset retry_count so it doesn't accumulate
+            # across standby cycles and cause spurious retry escalation.
+            self.retry_count = 0
+            return self._handle_ble_error(
+                "Sensor is in standby or frame is empty", BT_STATUS_WAITING
+            )
+
+        parsed = self._parse_raw_frame(data)
+        if parsed is None:
+            return self._handle_ble_error("Payload parsing error", BT_STATUS_ERROR)
+
+        raw_temp, ph_raw_mv, raw_orp, sync_mode_raw, bat_raw = parsed
+        actual_sync_mode = sync_mode_raw if sync_mode_raw in VALID_SYNC_MODES else None
+
+        temp_offset = float(_get_opt(entry, CONF_TEMP_OFFSET, 0.0))
+        orp_target = float(_get_opt(entry, CONF_ORP_REF, DEFAULT_ORP_REF))
+        orp_measured = float(_get_opt(entry, CONF_ORP_CALIB, DEFAULT_ORP_CALIB))
+        orp_offset = orp_target - orp_measured
+
+        temp = raw_temp + temp_offset
+        orp = raw_orp + orp_offset
+
+        c4_mv, c7_mv, ph_ref_4, ph_ref_7 = self._load_ph_calibration(entry)
+        ph_calculated = self._compute_ph_calibrated(
+            ph_raw_mv, c4_mv, c7_mv, ph_ref_4, ph_ref_7
+        )
+        factory_ph = PH_FACTORY_SLOPE * ph_raw_mv + PH_FACTORY_OFFSET
+
+        tac_val = self.data.get(CONF_TAC) or 0
+        th_val = self.data.get(CONF_TH) or 0
+        tds_val = self.data.get(CONF_TDS) or 0
+
+        cya_raw = self.data.get(CONF_CYA)
+        cya_val = float(cya_raw) if cya_raw is not None else 40.0
+
+        chlorine_model = _get_opt(entry, CONF_CHLORINE_MODEL, "chlorine")
+
+        now = dt_util.utcnow()
+        measurement_time = (
+            (self.data.get("last_received") or now)
+            if self.data.get("raw_frame") == hex_frame
+            else now
+        )
+
+        # Li-SOCl2 state-of-charge from the cell voltage (see battery.py). A linear
+        # map is not usable for this chemistry because of its flat discharge plateau.
+        bat_pct: int = battery_percent_from_mv(bat_raw)
+
+        new_data: dict[str, Any] = {
+            **self.data,
+            "temp_raw": raw_temp,
+            "temperature": round(temp, 2),
+            "ph": round(ph_calculated, 2),
+            "ph_raw": ph_raw_mv,
+            "factory_ph": round(factory_ph, 2),
+            "orp_raw": raw_orp,
+            "orp": round(orp),
+            "battery": bat_raw,
+            "battery_level": bat_pct,
+            "sync_mode": actual_sync_mode,
+            "last_received": measurement_time,
+            "raw_frame": hex_frame,
+            "bluetooth_status": (
+                BT_STATUS_SYNC_APPLIED if cmd_type == "mode" else BT_STATUS_SUCCESS
+            ),
+        }
+
+        new_data.update(
+            self._build_chemistry_updates(
+                round(temp, 2),
+                round(ph_calculated, 2),
+                round(orp),
+                tac_val,
+                th_val,
+                tds_val,
+                cya_val,
+                chlorine_model,
+            )
+        )
+        self._schedule_save()
+        return new_data
+
+    async def _read_via_notify(
+        self, queue: "asyncio.Queue[bytes]", reference: bytes, loop
+    ) -> bytes:
+        """Wait up to 60s for a new 13-byte frame via notifications.
+
+        Returns the new frame, or raises asyncio.TimeoutError if none arrives.
+        """
+        deadline = loop.time() + 60.0
+        while True:
+            time_left = deadline - loop.time()
+            if time_left <= 0:
+                raise asyncio.TimeoutError()
+            payload = await asyncio.wait_for(queue.get(), timeout=time_left)
+            if len(payload) == 13 and (not reference or payload != reference):
+                return payload
+
+    async def _read_via_poll(
+        self, client: BleakClient, reference: bytes
+    ) -> bytes | None:
+        """Start Max strategy: hold a silent connection, then poll for a new frame.
+
+        Returns the new frame, or None if the three reads all yield the old frame.
+        """
+        _LOGGER.info(
+            "Flipr %s: Start Max detected. Holding silent connection for 35s to allow internal measurement...",
+            self.safe_mac,
+        )
+        await asyncio.sleep(35.0)
+
+        for read_retry in range(3):
+            if read_retry > 0:
+                _LOGGER.debug(
+                    "Flipr %s: Frame unchanged, waiting 8s more...",
+                    self.safe_mac,
+                )
+                await asyncio.sleep(8.0)
+
+            try:
+                payload = await client.read_gatt_char(FLIPR_CHARACTERISTIC_UUID)
+                _LOGGER.debug(
+                    "Flipr %s: Read attempt %d: %s | REF: %s",
+                    self.safe_mac,
+                    read_retry + 1,
+                    payload.hex().upper(),
+                    reference.hex().upper() if reference else "NONE",
+                )
+
+                if len(payload) == 13 and (not reference or payload != reference):
+                    return payload
+            except Exception as read_err:
+                _LOGGER.debug(
+                    "Flipr %s: Error reading after silent wait: %s",
+                    self.safe_mac,
+                    read_err,
+                )
+
+        return None
+
     async def _async_update_data(self) -> dict[str, Any]:
         if self._is_shutdown:
             _LOGGER.debug(
@@ -604,12 +785,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                 "Flipr %s: Bluetooth signal unavailable, connection ignored",
                 self.safe_mac,
             )
-            self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
-            self.retry_count = 0
-            self._cancel_pending_retry()
-            if self.data.get("ph_raw") is not None:
-                return dict(self.data)
-            raise UpdateFailed(
+            return self._go_out_of_range(
                 f"Flipr {self.safe_mac} out of range and no history available"
             )
 
@@ -623,12 +799,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                 "Flipr %s: ble_available is True but BLEDevice is missing from cache",
                 self.safe_mac,
             )
-            self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
-            self.retry_count = 0
-            self._cancel_pending_retry()
-            if self.data.get("ph_raw") is not None:
-                return dict(self.data)
-            raise UpdateFailed(
+            return self._go_out_of_range(
                 f"Flipr {self.safe_mac}: Bluetooth device not found despite recent signal"
             )
 
@@ -642,20 +813,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
             raise UpdateFailed("Config entry no longer available")
 
         is_init_done = self._init_done
-        use_gw = _get_opt(current_entry, CONF_USE_GATEWAY, True)
-
-        if not is_init_done:
-            if use_gw:
-                cmd_type = "mode"
-                cmd_val = int(_get_opt(current_entry, CONF_SYNC_MODE, "2"))
-            else:
-                cmd_type = "analyze"
-                cmd_val = 0x01
-        else:
-            cmd_type = self._pending_cmd_type
-            cmd_val = self._pending_cmd_val
-
-        target_uuid = SYNC_CHAR_UUID if cmd_type == "mode" else FLIPR_ANALYZE_UUID
+        cmd_type, cmd_val, target_uuid = self._select_command(current_entry)
 
         old_raw_frame_hex = self.data.get("raw_frame") or ""
         try:
@@ -776,71 +934,17 @@ class FliprDataCoordinator(DataUpdateCoordinator):
 
                     try:
                         if not is_start_max:
-                            timeout_limit = loop.time() + 60.0
-                            while True:
-                                time_left = timeout_limit - loop.time()
-                                if time_left <= 0:
-                                    raise asyncio.TimeoutError()
-
-                                payload = await asyncio.wait_for(
-                                    received_data_queue.get(), timeout=time_left
-                                )
-
-                                if len(payload) == 13 and (
-                                    not reference_frame_bytes
-                                    or payload != reference_frame_bytes
-                                ):
-                                    received_payload = payload
-                                    break
-
-                            if received_payload:
-                                break
-
-                        else:
-                            _LOGGER.info(
-                                "Flipr %s: Start Max detected. Holding silent connection for 35s to allow internal measurement...",
-                                self.safe_mac,
+                            received_payload = await self._read_via_notify(
+                                received_data_queue, reference_frame_bytes, loop
                             )
-                            await asyncio.sleep(35.0)
-
-                            for read_retry in range(3):
-                                if read_retry > 0:
-                                    _LOGGER.debug(
-                                        "Flipr %s: Frame unchanged, waiting 8s more...",
-                                        self.safe_mac,
-                                    )
-                                    await asyncio.sleep(8.0)
-
-                                try:
-                                    payload = await client.read_gatt_char(
-                                        FLIPR_CHARACTERISTIC_UUID
-                                    )
-                                    _LOGGER.debug(
-                                        "Flipr %s: Read attempt %d: %s | REF: %s",
-                                        self.safe_mac,
-                                        read_retry + 1,
-                                        payload.hex().upper(),
-                                        reference_frame_bytes.hex().upper()
-                                        if reference_frame_bytes
-                                        else "NONE",
-                                    )
-
-                                    if len(payload) == 13 and (
-                                        not reference_frame_bytes
-                                        or payload != reference_frame_bytes
-                                    ):
-                                        received_payload = payload
-                                        break
-                                except Exception as read_err:
-                                    _LOGGER.debug(
-                                        "Flipr %s: Error reading after silent wait: %s",
-                                        self.safe_mac,
-                                        read_err,
-                                    )
-
                             if received_payload:
                                 break
-
+                        else:
+                            received_payload = await self._read_via_poll(
+                                client, reference_frame_bytes
+                            )
+                            if received_payload:
+                                break
                             raise asyncio.TimeoutError()
 
                     except asyncio.TimeoutError:
@@ -918,92 +1022,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                 await _safely_disconnect(client)
 
         self.retry_count = 0
-
-        data = received_payload
-        hex_frame = data.hex().upper()
-
-        if hex_frame.startswith("0000"):
-            # Device in standby — reset retry_count so it doesn't accumulate
-            # across standby cycles and cause spurious retry escalation.
-            self.retry_count = 0
-            return self._handle_ble_error(
-                "Sensor is in standby or frame is empty", BT_STATUS_WAITING
-            )
-
-        parsed = self._parse_raw_frame(data)
-        if parsed is None:
-            return self._handle_ble_error("Payload parsing error", BT_STATUS_ERROR)
-
-        raw_temp, ph_raw_mv, raw_orp, sync_mode_raw, bat_raw = parsed
-        actual_sync_mode = sync_mode_raw if sync_mode_raw in VALID_SYNC_MODES else None
-
-        temp_offset = float(_get_opt(current_entry, CONF_TEMP_OFFSET, 0.0))
-        orp_target = float(_get_opt(current_entry, CONF_ORP_REF, DEFAULT_ORP_REF))
-        orp_measured = float(_get_opt(current_entry, CONF_ORP_CALIB, DEFAULT_ORP_CALIB))
-        orp_offset = orp_target - orp_measured
-
-        temp = raw_temp + temp_offset
-        orp = raw_orp + orp_offset
-
-        c4_mv, c7_mv, ph_ref_4, ph_ref_7 = self._load_ph_calibration(current_entry)
-        ph_calculated = self._compute_ph_calibrated(
-            ph_raw_mv, c4_mv, c7_mv, ph_ref_4, ph_ref_7
-        )
-        factory_ph = PH_FACTORY_SLOPE * ph_raw_mv + PH_FACTORY_OFFSET
-
-        tac_val = self.data.get(CONF_TAC) or 0
-        th_val = self.data.get(CONF_TH) or 0
-        tds_val = self.data.get(CONF_TDS) or 0
-
-        cya_raw = self.data.get(CONF_CYA)
-        cya_val = float(cya_raw) if cya_raw is not None else 40.0
-
-        chlorine_model = _get_opt(current_entry, CONF_CHLORINE_MODEL, "chlorine")
-
-        now = dt_util.utcnow()
-        measurement_time = (
-            (self.data.get("last_received") or now)
-            if self.data.get("raw_frame") == hex_frame
-            else now
-        )
-
-        # Li-SOCl2 state-of-charge from the cell voltage (see battery.py). A linear
-        # map is not usable for this chemistry because of its flat discharge plateau.
-        bat_pct: int = battery_percent_from_mv(bat_raw)
-
-        new_data: dict[str, Any] = {
-            **self.data,
-            "temp_raw": raw_temp,
-            "temperature": round(temp, 2),
-            "ph": round(ph_calculated, 2),
-            "ph_raw": ph_raw_mv,
-            "factory_ph": round(factory_ph, 2),
-            "orp_raw": raw_orp,
-            "orp": round(orp),
-            "battery": bat_raw,
-            "battery_level": bat_pct,
-            "sync_mode": actual_sync_mode,
-            "last_received": measurement_time,
-            "raw_frame": hex_frame,
-            "bluetooth_status": (
-                BT_STATUS_SYNC_APPLIED if cmd_type == "mode" else BT_STATUS_SUCCESS
-            ),
-        }
-
-        new_data.update(
-            self._build_chemistry_updates(
-                round(temp, 2),
-                round(ph_calculated, 2),
-                round(orp),
-                tac_val,
-                th_val,
-                tds_val,
-                cya_val,
-                chlorine_model,
-            )
-        )
-        self._schedule_save()
-        return new_data
+        return self._assemble_new_data(received_payload, current_entry, cmd_type)
 
     def _handle_ble_error(
         self,
@@ -1054,9 +1073,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
             )
             self.retry_count = 0
 
-        if self.data.get("ph_raw") is not None:
-            return dict(self.data)
-        raise UpdateFailed(f"Flipr unreachable and no history: {error_msg}")
+        return self._data_or_fail(f"Flipr unreachable and no history: {error_msg}")
 
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:

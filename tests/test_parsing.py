@@ -1,10 +1,18 @@
 # Copyright (c) 2026 Adrien40
 # This file is part of Flipr Local.
 
+from types import SimpleNamespace
+
 import pytest
 
 from custom_components.flipr_local import FliprDataCoordinator
-from custom_components.flipr_local.const import get_flipr_model
+from custom_components.flipr_local.const import (
+    CONF_SYNC_MODE,
+    CONF_USE_GATEWAY,
+    FLIPR_ANALYZE_UUID,
+    SYNC_CHAR_UUID,
+    get_flipr_model,
+)
 
 
 @pytest.fixture
@@ -112,3 +120,54 @@ def test_zero_slope_falls_back_to_seven(coordinator):
 )
 def test_get_flipr_model(name, expected):
     assert get_flipr_model(name) == expected
+
+
+# ==========================================
+# _select_command
+# ==========================================
+
+
+def _coord(init_done, pending_type="analyze", pending_val=0x01):
+    coord = object.__new__(FliprDataCoordinator)
+    coord._init_done = init_done
+    coord._pending_cmd_type = pending_type
+    coord._pending_cmd_val = pending_val
+    return coord
+
+
+def _entry(options=None, data=None):
+    return SimpleNamespace(options=options or {}, data=data or {})
+
+
+def test_select_command_first_cycle_with_gateway_uses_sync_mode():
+    coord = _coord(init_done=False)
+    assert coord._select_command(_entry(options={CONF_SYNC_MODE: "3"})) == (
+        "mode",
+        3,
+        SYNC_CHAR_UUID,
+    )
+
+
+def test_select_command_first_cycle_defaults_to_eco_mode():
+    coord = _coord(init_done=False)
+    assert coord._select_command(_entry()) == ("mode", 2, SYNC_CHAR_UUID)
+
+
+def test_select_command_first_cycle_without_gateway_analyzes():
+    coord = _coord(init_done=False)
+    assert coord._select_command(_entry(options={CONF_USE_GATEWAY: False})) == (
+        "analyze",
+        0x01,
+        FLIPR_ANALYZE_UUID,
+    )
+
+
+def test_select_command_after_init_uses_pending():
+    coord = _coord(init_done=True, pending_type="mode", pending_val=3)
+    assert coord._select_command(_entry()) == ("mode", 3, SYNC_CHAR_UUID)
+    coord_analyze = _coord(init_done=True, pending_type="analyze", pending_val=0x01)
+    assert coord_analyze._select_command(_entry()) == (
+        "analyze",
+        1,
+        FLIPR_ANALYZE_UUID,
+    )
