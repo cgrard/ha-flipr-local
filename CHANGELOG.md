@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.1] - 2026-06-19
+## [1.1.1] - 2026-06-21
 
 ### Added
 - Continuous-integration workflow running the test suite with pytest on every
@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.gitignore` covering Python, pytest, ruff, virtualenv and editor artifacts.
 - `loggers` manifest key (`bleak`, `bleak_retry_connector`) so enabling debug
   logging for the integration also covers its Bluetooth dependencies.
+- Hardware guide (FR and EN) on recycling the obsolete Flipr WiFi gateway into
+  an ESPHome Bluetooth proxy, linked from the README Hardware Rescue section.
 
 ### Changed
 - Exposed a public `is_shutdown` coordinator property; entities no longer read

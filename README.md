@@ -207,6 +207,8 @@ Remove the old probes, clean the white base. Plug the MMCX adapters into the mot
 
 </details>
 
+> 📡 **Recycle the WiFi gateway**: rather than buying a dedicated ESP32, you can reflash the obsolete Flipr WiFi gateway into an ESPHome Bluetooth proxy. See the full reverse-engineering guide: [Recycling the Flipr WiFi gateway into an ESPHome Bluetooth proxy](docs/gateway-esphome-proxy.en.md).
+
 ---
 
 ### 🤝 Contributions & Support

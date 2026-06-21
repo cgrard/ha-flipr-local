@@ -207,6 +207,8 @@ Retirez les anciennes sondes, nettoyez la base blanche. Branchez les adaptateurs
 
 </details>
 
+> 📡 **Recyclez la passerelle WiFi** : plutôt que d'acheter un ESP32 dédié, vous pouvez reflasher la passerelle WiFi Flipr devenue inutile en proxy Bluetooth ESPHome. Voir le guide complet de reverse engineering : [Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome](docs/passerelle-esphome-proxy.fr.md).
+
 ---
 
 ### 🤝 Contributions & Support
