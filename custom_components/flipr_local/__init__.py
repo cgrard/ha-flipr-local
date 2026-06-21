@@ -763,79 +763,22 @@ class FliprDataCoordinator(DataUpdateCoordinator):
 
         return None
 
-    async def _async_update_data(self) -> dict[str, Any]:
-        if self._is_shutdown:
-            _LOGGER.debug(
-                "Skipping update for %s: coordinator is shutting down",
-                self.safe_mac,
-            )
-            return dict(self.data)
+    async def _run_ble_exchange(
+        self,
+        device,
+        cmd_type: str,
+        cmd_val: int,
+        target_uuid: str,
+        is_init_done: bool,
+        is_start_max: bool,
+        reference: bytes,
+    ) -> bytes | dict[str, Any]:
+        """Run one BLE connect/write/read cycle under the lock.
 
-        if not self.data.get("active_measures", True):
-            if self._force_one_shot:
-                _LOGGER.debug("Force one-shot analysis requested for %s", self.safe_mac)
-            else:
-                _LOGGER.debug("Measurements paused by user for %s", self.safe_mac)
-                self._set_bt_status(BT_STATUS_PAUSED)
-                self.retry_count = 0
-                return dict(self.data)
-
-        if not self.ble_available:
-            _LOGGER.debug(
-                "Flipr %s: Bluetooth signal unavailable, connection ignored",
-                self.safe_mac,
-            )
-            return self._go_out_of_range(
-                f"Flipr {self.safe_mac} out of range and no history available"
-            )
-
-        device = async_ble_device_from_address(self.hass, self.mac, connectable=True)
-        if not device:
-            device = async_ble_device_from_address(
-                self.hass, self.mac, connectable=False
-            )
-        if not device:
-            _LOGGER.debug(
-                "Flipr %s: ble_available is True but BLEDevice is missing from cache",
-                self.safe_mac,
-            )
-            return self._go_out_of_range(
-                f"Flipr {self.safe_mac}: Bluetooth device not found despite recent signal"
-            )
-
-        force_was_set = self._force_one_shot
-        self._force_one_shot = False
-        if force_was_set:
-            _LOGGER.debug("Manual analysis triggered for %s", self.safe_mac)
-
-        current_entry = self.entry
-        if not current_entry:
-            raise UpdateFailed("Config entry no longer available")
-
-        is_init_done = self._init_done
-        cmd_type, cmd_val, target_uuid = self._select_command(current_entry)
-
-        old_raw_frame_hex = self.data.get("raw_frame") or ""
-        try:
-            # Use EXPECTED_FRAME_HEX_LEN constant instead of magic number 26.
-            # A Flipr BLE frame is always 13 bytes → 26 hex characters when encoded.
-            old_raw_frame_bytes = (
-                bytes.fromhex(old_raw_frame_hex)
-                if len(old_raw_frame_hex) == EXPECTED_FRAME_HEX_LEN
-                else b""
-            )
-        except ValueError:
-            _LOGGER.warning(
-                "Corrupted raw_frame in storage for %s ('%s') — ignoring reference frame",
-                self.safe_mac,
-                old_raw_frame_hex,
-            )
-            old_raw_frame_bytes = b""
-
-        # Identify model once before connecting to drive both connection options
-        # and the data-reading strategy, without any GATT introspection.
-        is_start_max = get_flipr_model(device.name).startswith("Flipr Start")
-
+        Returns the received frame on success, or an error-status dict for a
+        short-circuit; may raise UpdateFailed when the device is unreachable
+        with no stored history.
+        """
         client: BleakClient | None = None
         notify_started = False
         received_payload: bytes | None = None
@@ -874,7 +817,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                     )
                     notify_started = True
 
-                reference_frame_bytes = old_raw_frame_bytes
+                reference_frame_bytes = reference
 
                 for attempt in range(1, 3):
                     if not is_start_max:
@@ -1021,8 +964,95 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                         await client.stop_notify(FLIPR_CHARACTERISTIC_UUID)
                 await _safely_disconnect(client)
 
+        return received_payload
+
+    async def _async_update_data(self) -> dict[str, Any]:
+        if self._is_shutdown:
+            _LOGGER.debug(
+                "Skipping update for %s: coordinator is shutting down",
+                self.safe_mac,
+            )
+            return dict(self.data)
+
+        if not self.data.get("active_measures", True):
+            if self._force_one_shot:
+                _LOGGER.debug("Force one-shot analysis requested for %s", self.safe_mac)
+            else:
+                _LOGGER.debug("Measurements paused by user for %s", self.safe_mac)
+                self._set_bt_status(BT_STATUS_PAUSED)
+                self.retry_count = 0
+                return dict(self.data)
+
+        if not self.ble_available:
+            _LOGGER.debug(
+                "Flipr %s: Bluetooth signal unavailable, connection ignored",
+                self.safe_mac,
+            )
+            return self._go_out_of_range(
+                f"Flipr {self.safe_mac} out of range and no history available"
+            )
+
+        device = async_ble_device_from_address(self.hass, self.mac, connectable=True)
+        if not device:
+            device = async_ble_device_from_address(
+                self.hass, self.mac, connectable=False
+            )
+        if not device:
+            _LOGGER.debug(
+                "Flipr %s: ble_available is True but BLEDevice is missing from cache",
+                self.safe_mac,
+            )
+            return self._go_out_of_range(
+                f"Flipr {self.safe_mac}: Bluetooth device not found despite recent signal"
+            )
+
+        force_was_set = self._force_one_shot
+        self._force_one_shot = False
+        if force_was_set:
+            _LOGGER.debug("Manual analysis triggered for %s", self.safe_mac)
+
+        current_entry = self.entry
+        if not current_entry:
+            raise UpdateFailed("Config entry no longer available")
+
+        is_init_done = self._init_done
+        cmd_type, cmd_val, target_uuid = self._select_command(current_entry)
+
+        old_raw_frame_hex = self.data.get("raw_frame") or ""
+        try:
+            # Use EXPECTED_FRAME_HEX_LEN constant instead of magic number 26.
+            # A Flipr BLE frame is always 13 bytes → 26 hex characters when encoded.
+            old_raw_frame_bytes = (
+                bytes.fromhex(old_raw_frame_hex)
+                if len(old_raw_frame_hex) == EXPECTED_FRAME_HEX_LEN
+                else b""
+            )
+        except ValueError:
+            _LOGGER.warning(
+                "Corrupted raw_frame in storage for %s ('%s') — ignoring reference frame",
+                self.safe_mac,
+                old_raw_frame_hex,
+            )
+            old_raw_frame_bytes = b""
+
+        # Identify model once before connecting to drive both connection options
+        # and the data-reading strategy, without any GATT introspection.
+        is_start_max = get_flipr_model(device.name).startswith("Flipr Start")
+
+        result = await self._run_ble_exchange(
+            device,
+            cmd_type,
+            cmd_val,
+            target_uuid,
+            is_init_done,
+            is_start_max,
+            old_raw_frame_bytes,
+        )
+        if isinstance(result, dict):
+            return result
+
         self.retry_count = 0
-        return self._assemble_new_data(received_payload, current_entry, cmd_type)
+        return self._assemble_new_data(result, current_entry, cmd_type)
 
     def _handle_ble_error(
         self,
