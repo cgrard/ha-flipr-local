@@ -1,4 +1,4 @@
-[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](esphome-proxy.fr.md) [![English](https://img.shields.io/badge/Language-English-red)](#)
+[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](esphome-proxy.fr.md) [![English](https://img.shields.io/badge/Language-English-red)](esphome-proxy.en.md)
 
 # Recycling the Flipr WiFi gateway into an ESPHome Bluetooth proxy
 
@@ -112,7 +112,7 @@ From there it is almost straightforward: solder a 2x3p header onto K2 and off yo
 
 ## What you need
 
-- A **3.3 V USB-TTL adapter** (CH343, CP2102, CH340… with the level selector **set to 3V3**). The CH343G-based Waveshare USB-to-TTL (B) works well: [link](https://amzn.eu/d/05ITAASp).
+- A **3.3 V USB-TTL adapter** (CH343, CP2102, CH340… with the level selector **set to 3V3**). The CH343G-based [Waveshare USB-to-TTL (B)](https://amzn.eu/d/05ITAASp) works well.
 - `esptool` (v5.x recommended; I used 5.3.0 for this guide).
 - ESPHome (via Docker, the Home Assistant add-on, or the CLI).
 - A few thin Dupont-style wires and, ideally, a 2.54 mm-pitch 2x3p connector for K2, though plain wires also do the job.

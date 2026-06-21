@@ -1,0 +1,35 @@
+{
+  // markdownlint configuration for this repository.
+  // Structural rules (blank lines around headings/lists/tables, trailing
+  // spaces, single trailing newline, ...) stay ON and are enforced.
+  // The rules below are turned off because they conflict with the project's
+  // intentional Markdown style, not because of real defects.
+  "default": true,
+
+  // READMEs are prose; they are not hard-wrapped at 80 columns.
+  "MD013": false,
+
+  // The READMEs rely on inline HTML for collapsible <details> sections,
+  // centered <p align="center"> blocks, <img> and the language badges.
+  "MD033": false,
+
+  // Files intentionally start with language badges, not an H1.
+  "MD041": false,
+
+  // Bullet marker style (* vs -) is mixed across upstream and new docs; the
+  // marker is cosmetic and not worth churning the author's content over.
+  "MD004": false,
+
+  // Inline HTML images carry their own alt handling; paired with MD033 off.
+  "MD045": false,
+
+  // The signature line ("Developed with <3 by @Adrien40") is styled emphasis.
+  "MD036": false,
+
+  // Some headings end with a colon or emoji on purpose (e.g. "Hardware Rescue:").
+  "MD026": false,
+
+  // The CHANGELOG repeats "Added" / "Changed" / "Fixed" across version sections,
+  // which is the Keep a Changelog convention; only flag duplicates among siblings.
+  "MD024": { "siblings_only": true }
+}

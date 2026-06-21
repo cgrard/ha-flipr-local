@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.1] - 2026-06-21
 
 ### Added
+
 - Continuous-integration workflow running the test suite with pytest on every
   push and pull request (`.github/workflows/test.yaml`).
 - `requirements_test.txt` declaring the test dependencies, including the
@@ -21,8 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - English version of the calibration guide. The guides now live under `docs/`
   with a uniform `<topic>.<lang>.md` naming, and the calibration guide (which
   was previously unlinked) is referenced from both READMEs.
+- `.markdownlint.jsonc` config encoding the repository's Markdown style, and a
+  pass fixing the structural lint issues (blank lines around headings, lists
+  and tables, trailing spaces, empty and non-descriptive links) so all Markdown
+  files lint cleanly.
 
 ### Changed
+
 - Exposed a public `is_shutdown` coordinator property; entities no longer read
   the private attribute.
 - Translated the remaining French code comments to English and added the
@@ -31,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bumped for the 1.1.0 release).
 
 ### Fixed
+
 - Repaired the chemistry test suite, which referenced functions removed during
   an earlier refactor (`compute_active_chlorine`, `compute_flipr_active_chlorine`,
   `compute_flipr_theoretical_orp`) and failed to import. Tests now cover the
@@ -57,16 +64,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2026-05-12
 
 ### Added
+
 - Bluetooth discovery matchers for additional Flipr local names
   (`F2B*` and `F30*`–`F3F*`), broadening automatic device detection.
 
 ### Changed
+
 - Refactored inline comments and improved code clarity.
 - Documentation updates (`README.md`, `README.fr.md`).
 
 ## [1.0.0] - 2026-04-19
 
 ### Added
+
 - Initial release: local (BLE) integration for Flipr pool analysers, with
   temperature, pH, ORP, estimated free chlorine, active chlorine (HOCl),
   Langelier saturation index, battery and Bluetooth diagnostics.

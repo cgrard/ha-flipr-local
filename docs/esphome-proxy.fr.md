@@ -1,4 +1,4 @@
-[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](#) [![English](https://img.shields.io/badge/Language-English-red)](esphome-proxy.en.md)
+[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](esphome-proxy.fr.md) [![English](https://img.shields.io/badge/Language-English-red)](esphome-proxy.en.md)
 
 # Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome
 
@@ -112,7 +112,7 @@ graph LR
 
 ## Ce dont vous avez besoin
 
-- Un **adaptateur USB-TTL 3,3 V** (CH343, CP2102, CH340… avec sélecteur de niveau **réglé sur 3V3**). Le modèle Waveshare USB-to-TTL (B) à base de CH343G fonctionne bien : [lien](https://amzn.eu/d/05ITAASp).
+- Un **adaptateur USB-TTL 3,3 V** (CH343, CP2102, CH340… avec sélecteur de niveau **réglé sur 3V3**). Le modèle [Waveshare USB-to-TTL (B)](https://amzn.eu/d/05ITAASp) à base de CH343G fonctionne bien.
 - `esptool` (v5.x recommandé, j'ai utilisé la 5.3.0 pour ce guide).
 - ESPHome (via Docker, l'add-on Home Assistant, ou la CLI).
 - Quelques fils fins type Dupont et idéalement un connecteur type 2x3p au pas de 2,54 mm pour le connecteur K2 mais ça peut se faire avec de simples fils.
