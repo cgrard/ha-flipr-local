@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   command selection (`_select_command`) and model detection (`get_flipr_model`).
 - Mocked integration tests covering a full coordinator update cycle (connect,
   write, notify and Start Max poll paths) end to end.
+- Broad test coverage for the entity platforms, the config and options flows,
+  the coordinator error/retry and save-restore paths, and a full entry
+  setup/unload, lifting overall coverage to roughly 80%.
 
 ### Changed
 
