@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pass fixing the structural lint issues (blank lines around headings, lists
   and tables, trailing spaces, empty and non-descriptive links) so all Markdown
   files lint cleanly.
+- Unit tests for the previously untested pure logic: calibration validation
+  (`validate_calibration`, `_flatten_sections`), BLE frame parsing
+  (`_parse_raw_frame`), pH calibration math (`_compute_ph_calibrated`) and
+  model detection (`get_flipr_model`).
 
 ### Changed
 
@@ -40,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not fit this chemistry's flat plateau and gave almost no end-of-life warning;
   the new piecewise curve stays near full across the plateau and drops through
   the knee where the voltage is actually informative.
+- Internal cleanup with no behaviour change: cleared the extended ruff lints
+  (`itertools.pairwise`, `ClassVar`, `raise ... from None`, `contextlib.suppress`),
+  hoisted the per-call sensor icon dictionaries to module constants, and lowered
+  the chemistry "could not compute" logs from error to debug to cut log noise.
 
 ### Fixed
 
