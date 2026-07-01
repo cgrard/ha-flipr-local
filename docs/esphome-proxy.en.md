@@ -147,6 +147,26 @@ Without precautions, the firmware **goes into a boot loop** (resets in a loop, w
 - `ignore_strapping_warning: true` on GPIO4 and GPIO5
 - `restore_mode: ALWAYS_OFF` on the light (prevents the LED from initializing in an active state at boot)
 
+### 4. Continuous BLE scanning (`window == interval`) freezes the C6's coexistence
+
+The nastiest pitfall, because it is delayed. Everything works for a day or two (hourly reads OK), then `ha-flipr-local` gets stuck in `out_of_range` for days, and only a physical reboot of the proxy clears it, temporarily. The proxy's WiFi never drops (green LED, gateway online): only the BLE link to the probe dies.
+
+Cause: the ESP32-C6 has a single 2.4 GHz radio shared between WiFi and BLE. With `interval` equal to `window` (the `1100ms / 1100ms` of an earlier version of this guide), the scanner listens continuously, 100% of the time, never yielding. The WiFi/BLE coexistence has no slot left to switch cleanly into an active GATT connection, and eventually the BLE stack wedges on a scan-to-connection transition. It never reconnects on its own.
+
+The tuning: keep a long window, but leave a small gap between scans by setting `window` strictly smaller than `interval`.
+
+```yaml
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1100ms
+    window: 1000ms   # 100 ms gap per cycle, yields to WiFi/BLE coexistence
+    active: true
+```
+
+Why such a long window (1000 ms) and not the ESPHome defaults (`interval: 320ms / window: 30ms`): the Flipr probe advertises infrequently to save its battery. A 30 ms window misses almost all of its advertisements, and `ha-flipr-local` then drops to an immediate `out_of_range`, without even attempting the connection, for lack of a fresh signal. So you have to listen almost continuously, just with the coexistence gap.
+
+Belt and braces: add a `restart` button (already in the YAML below) and an automation that reboots the proxy if no analysis comes in anymore, see [Home Assistant automation](#home-assistant-automation). Even if the BLE stack wedges again someday, the proxy recovers on its own, with no manual unplugging.
+
 ---
 
 ## K2 connector pinout
@@ -441,6 +461,7 @@ ota:
 wifi:
   ssid: "[YOUR_SSID]"
   password: "[YOUR_WIFI_PASSWORD]"
+  power_save_mode: none # more deterministic WiFi/BLE coexistence on the C6 (anti-freeze)
   ap:
     ssid: "Flipr-Proxy Fallback"
     password: "[YOUR_AP_PASSWORD]"
@@ -452,6 +473,11 @@ wifi:
     - script.execute: update_led
 
 captive_portal:
+
+# Restart button exposed to HA for the anti-freeze watchdog (see Home Assistant automation).
+button:
+  - platform: restart
+    name: "Restart"
 
 globals:
   - id: wifi_connected
@@ -472,10 +498,13 @@ globals:
     initial_value: 'false'
 
 # ---- BLE ----
+# window < interval (100 ms gap/cycle) for the C6's WiFi/BLE coexistence.
+# Long window because the Flipr probe advertises rarely. Do NOT drop to the
+# 320/30 defaults (starves advertisements, immediate out_of_range). See pitfall 4.
 esp32_ble_tracker:
   scan_parameters:
     interval: 1100ms
-    window: 1100ms
+    window: 1000ms
     active: true
 
 bluetooth_proxy:
@@ -624,6 +653,28 @@ mode: single
 ```
 
 > `homeassistant.update_entity` triggers an immediate GATT re-read of the probe by `ha-flipr-local`. This updates the probe's last known value; it does not force the probe itself to take a new physical measurement.
+
+### Watchdog: auto-reboot if data stops coming in
+
+Direct complement to pitfall 4. If the BLE stack wedges again (no analysis for 2 h), this automation presses the proxy's `restart` button for you, instead of a manual unplug. The button comes from the `button: platform: restart` in the config above; its entity is typically named `button.<proxy_name>_restart`.
+
+```yaml
+alias: "Flipr - Watchdog reboot proxy if data is stale"
+description: "Reboots the proxy if ha-flipr-local stops reporting an analysis for 2 h"
+triggers:
+  - trigger: state
+    entity_id: sensor.flipr_xxxx_derniere_analyse # adapt the name
+    for:
+      hours: 2
+conditions: []
+actions:
+  - action: button.press
+    target:
+      entity_id: button.flipr_proxy_restart # adapt the name
+mode: single
+```
+
+> A `state` trigger with `for:` and no `to`/`from` fires when the entity has not changed for 2 h. Since the last-analysis timestamp normally advances every hour, 2 h without a change means two missed cycles, i.e. a wedged BLE stack. After the reboot, if data does not resume, the automation fires again 2 h later, until it recovers.
 
 ---
 
