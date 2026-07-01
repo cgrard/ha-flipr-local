@@ -64,16 +64,17 @@
     }
   ],
   "codeowners": [
+    "@cgrard",
     "@Adrien40"
   ],
   "config_flow": true,
   "dependencies": [
     "bluetooth"
   ],
-  "documentation": "https://github.com/Adrien40/ha-flipr-local",
+  "documentation": "https://github.com/cgrard/ha-flipr-local",
   "integration_type": "device",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/Adrien40/ha-flipr-local/issues",
+  "issue_tracker": "https://github.com/cgrard/ha-flipr-local/issues",
   "loggers": ["bleak", "bleak_retry_connector"],
   "requirements": [
     "bleak>=0.21.1",

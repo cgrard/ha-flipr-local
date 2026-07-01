@@ -1,120 +1,142 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+Tous les changements notables de ce projet sont documentés dans ce fichier.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
+et ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
-## [1.2.0] - 2026-06-21
+## [1.2.0] - 2026-07-01
 
-### Added
+### Ajouté
 
-- Continuous-integration workflow running the test suite with pytest on every
-  push and pull request (`.github/workflows/test.yaml`).
-- `requirements_test.txt` declaring the test dependencies, including the
-  Home Assistant Bluetooth/USB stack pulled in when importing the integration.
-- `pytest.ini` with the test path and asyncio configuration.
-- `.gitignore` covering Python, pytest, ruff, virtualenv and editor artifacts.
-- `loggers` manifest key (`bleak`, `bleak_retry_connector`) so enabling debug
-  logging for the integration also covers its Bluetooth dependencies.
-- Hardware guide (FR and EN) on recycling the obsolete Flipr WiFi gateway into
-  an ESPHome Bluetooth proxy, linked from the README Hardware Rescue section.
-- English version of the calibration guide. The guides now live under `docs/`
-  with a uniform `<topic>.<lang>.md` naming, and the calibration guide (which
-  was previously unlinked) is referenced from both READMEs.
-- `.markdownlint.jsonc` config encoding the repository's Markdown style, and a
-  pass fixing the structural lint issues (blank lines around headings, lists
-  and tables, trailing spaces, empty and non-descriptive links) so all Markdown
-  files lint cleanly.
-- Unit tests for the previously untested pure logic: calibration validation
-  (`validate_calibration`, `_flatten_sections`), BLE frame parsing
-  (`_parse_raw_frame`), pH calibration math (`_compute_ph_calibrated`),
-  command selection (`_select_command`) and model detection (`get_flipr_model`).
-- Mocked integration tests covering a full coordinator update cycle (connect,
-  write, notify and Start Max poll paths) end to end.
-- Broad test coverage for the entity platforms, the config and options flows,
-  the coordinator error/retry and save-restore paths, and a full entry
-  setup/unload, lifting overall coverage to roughly 80%.
+- Guide proxy ESPHome : bouton `restart` exposé à Home Assistant et automation
+  « watchdog » qui redémarre le proxy si aucune analyse ne remonte depuis 2 h,
+  en remplacement du débranchage manuel après un gel BLE.
+- Workflow d'intégration continue exécutant la suite de tests avec pytest à chaque
+  push et pull request (`.github/workflows/test.yaml`).
+- `requirements_test.txt` déclarant les dépendances de test, dont la pile
+  Bluetooth/USB de Home Assistant tirée à l'import de l'intégration.
+- `pytest.ini` avec le chemin des tests et la configuration asyncio.
+- `.gitignore` couvrant les artefacts Python, pytest, ruff, virtualenv et éditeurs.
+- Clé `loggers` du manifest (`bleak`, `bleak_retry_connector`) pour que l'activation
+  des logs de debug de l'intégration couvre aussi ses dépendances Bluetooth.
+- Guide matériel sur le recyclage de la passerelle WiFi Flipr obsolète en proxy
+  Bluetooth ESPHome, lié depuis la section Sauvetage matériel du README.
+- Guide de calibration sous `docs/` (jusque-là non lié), référencé depuis le README,
+  avec un nommage de fichiers uniforme.
+- Configuration `.markdownlint.jsonc` encodant le style Markdown du dépôt, et une passe
+  corrigeant les problèmes de lint structurels (lignes vides autour des titres, listes
+  et tableaux, espaces en fin de ligne, liens vides ou non descriptifs) pour que tous
+  les fichiers Markdown passent le lint proprement.
+- Tests unitaires pour la logique pure jusque-là non testée : validation de la
+  calibration (`validate_calibration`, `_flatten_sections`), analyse des trames BLE
+  (`_parse_raw_frame`), calcul de calibration du pH (`_compute_ph_calibrated`),
+  sélection de commande (`_select_command`) et détection du modèle (`get_flipr_model`).
+- Tests d'intégration mockés couvrant un cycle complet de mise à jour du coordinator
+  (chemins connexion, écriture, notification et interrogation Start Max) de bout en bout.
+- Large couverture de tests pour les plateformes d'entités, les flux de configuration
+  et d'options, les chemins erreur/retry et sauvegarde-restauration du coordinator, et
+  un setup/unload complet d'entrée, portant la couverture globale à environ 80 %.
 
-### Changed
+### Modifié
 
-- Exposed a public `is_shutdown` coordinator property; entities no longer read
-  the private attribute.
-- Translated the remaining French code comments to English and added the
-  offending value to the `get_mv_from_input` error for clearer logs.
-- Set `manifest.json` version to `1.2.0` (it had been left at `1.0.0`, never
-  bumped for the 1.1.0 release).
-- Replaced the linear battery percentage with a Li-SOCl2 (Saft LS26500)
-  discharge curve in `battery.py`. The previous linear 2500-3600 mV mapping did
-  not fit this chemistry's flat plateau and gave almost no end-of-life warning;
-  the new piecewise curve stays near full across the plateau and drops through
-  the knee where the voltage is actually informative.
-- Internal cleanup with no behaviour change: cleared the extended ruff lints
+- Documentation fournie en français uniquement.
+- Note de fork ajoutée en tête du README (fork maintenu de `Adrien40/ha-flipr-local`,
+  créditant l'auteur amont pour l'intégration d'origine).
+- Retrait des appels au don (bouton Buy Me a Coffee, `.github/FUNDING.yml`) et des
+  emoji décoratifs dans la documentation.
+- Exposition d'une propriété publique `is_shutdown` du coordinator ; les entités ne
+  lisent plus l'attribut privé.
+- Traduction des derniers commentaires de code français vers l'anglais et ajout de la
+  valeur fautive à l'erreur `get_mv_from_input` pour des logs plus clairs.
+- Passage de la version de `manifest.json` à `1.2.0` (restée à `1.0.0`, jamais
+  incrémentée pour la version 1.1.0).
+- Remplacement du pourcentage de batterie linéaire par une courbe de décharge Li-SOCl2
+  (Saft LS26500) dans `battery.py`. L'ancien mapping linéaire 2500-3600 mV ne
+  correspondait pas au plateau plat de cette chimie et ne donnait quasiment aucune
+  alerte de fin de vie ; la nouvelle courbe par morceaux reste proche du plein sur tout
+  le plateau et chute au niveau du genou, là où la tension est réellement informative.
+- Nettoyage interne sans changement de comportement : correction des lints ruff étendus
   (`itertools.pairwise`, `ClassVar`, `raise ... from None`, `contextlib.suppress`),
-  hoisted the per-call sensor icon dictionaries to module constants, and lowered
-  the chemistry "could not compute" logs from error to debug to cut log noise.
-- Refactored `config_flow.py` with no behaviour change: drive every number field
-  from a shared bounds table so the config and options flows can no longer drift
-  apart (the calibration and threshold sections were fully duplicated), and split
-  `validate_calibration` into focused helpers. New tests lock the schema builders.
-- Refactored the entity platforms with no behaviour change: a shared
-  `resolve_entry_context` helper and `CONF_MODEL` constant remove the repeated
-  setup boilerplate, and the dispatcher signal is centralised in
-  `options_updated_signal` (one sender, four receivers) with a small entity mixin
-  for the subscription wiring.
-- Decomposed the 420-line `_async_update_data` with no behaviour change:
-  extracted focused helpers (command selection, frame assembly, the two read
-  strategies and the `_run_ble_exchange` block), cutting its complexity from 47
-  to 11. The extraction is covered by the new mocked integration tests.
+  remontée des dictionnaires d'icônes de capteurs en constantes de module, et abaissement
+  des logs de chimie « could not compute » d'erreur à debug pour réduire le bruit.
+- Refactorisation de `config_flow.py` sans changement de comportement : pilotage de chaque
+  champ numérique depuis une table de bornes partagée pour que les flux de configuration
+  et d'options ne puissent plus diverger (les sections calibration et seuils étaient
+  entièrement dupliquées), et découpage de `validate_calibration` en helpers ciblés. De
+  nouveaux tests verrouillent les constructeurs de schéma.
+- Refactorisation des plateformes d'entités sans changement de comportement : un helper
+  partagé `resolve_entry_context` et une constante `CONF_MODEL` suppriment le boilerplate
+  de setup répété, et le signal du dispatcher est centralisé dans `options_updated_signal`
+  (un émetteur, quatre récepteurs) avec un petit mixin d'entité pour le câblage de
+  l'abonnement.
+- Décomposition de `_async_update_data` (420 lignes) sans changement de comportement :
+  extraction de helpers ciblés (sélection de commande, assemblage de trame, les deux
+  stratégies de lecture et le bloc `_run_ble_exchange`), réduisant sa complexité de 47 à
+  11. L'extraction est couverte par les nouveaux tests d'intégration mockés.
 
-### Fixed
+### Corrigé
 
-- Repaired the chemistry test suite, which referenced functions removed during
-  an earlier refactor (`compute_active_chlorine`, `compute_flipr_active_chlorine`,
-  `compute_flipr_theoretical_orp`) and failed to import. Tests now cover the
-  current API (`estimate_free_chlorine`, `compute_active_chlorine_from_fc`,
+- Guide proxy ESPHome : correction du réglage de scan BLE qui saturait la coexistence
+  WiFi/BLE de la radio 2,4 GHz unique de l'ESP32-C6 (`window == interval`, par exemple
+  `1100ms / 1100ms`, scan en continu sans jamais rendre la main) et finissait par figer
+  la pile BLE (`ha-flipr-local` bloqué en `out_of_range` pendant des jours, WiFi toujours
+  connecté, seul un redémarrage physique du proxy le débloquant). Passage à
+  `window: 1000ms` (trou de 100 ms par cycle pour laisser un créneau à la coexistence) et
+  `wifi: power_save_mode: none`. Les défauts ESPHome `320ms / 30ms` sont à proscrire : ils
+  ratent les annonces rares de la sonde et provoquent un `out_of_range` immédiat sans même
+  tenter la connexion.
+- Réparation de la suite de tests de chimie, qui référençait des fonctions supprimées
+  lors d'un refactor antérieur (`compute_active_chlorine`, `compute_flipr_active_chlorine`,
+  `compute_flipr_theoretical_orp`) et échouait à l'import. Les tests couvrent désormais
+  l'API actuelle (`estimate_free_chlorine`, `compute_active_chlorine_from_fc`,
   `compute_isl`, `compute_ph_equilibrium`, `get_mv_from_input`).
-- Dutch and Brazilian Portuguese options dialog: a duplicate `sections` key
-  silently dropped the General and Probe-calibration sections at parse time;
-  merged into one block so both locales are complete again.
-- Options-flow error messages: added the missing pH calibration error keys to
-  every locale (they previously appeared as raw, untranslated keys).
-- Locale wording: Czech RSSI name order, Polish sentence case, Russian "raw"
-  term, Dutch and Danish compound nouns, Chinese stabilizer term.
-- Config flow: preserve the calibration already entered when choosing manual
-  MAC entry; set a `unique_id` for manual entries to prevent the same device
-  being configured twice; attribute a pH parse error to the field that failed.
-- BLE coordinator: compare the pending command value (not just its type) so a
-  sync-mode change made during a poll is not lost; stop `_do_save` from leaking
-  a scheduled save-timer handle and guard the debounce callback on shutdown;
-  cancel an armed retry timer when going out of range.
-- Entities: apply a new scan interval immediately by rescheduling the poll
-  timer; tag a naive `last_received` as UTC instead of local time; keep the
-  RSSI sensor available while advertisements arrive during paused measurements.
+- Dialogue d'options néerlandais et portugais brésilien : une clé `sections` en double
+  supprimait silencieusement les sections Général et Calibration de la sonde au parsing ;
+  fusionnées en un seul bloc pour que les deux locales soient de nouveau complètes.
+- Messages d'erreur du flux d'options : ajout des clés d'erreur de calibration du pH
+  manquantes dans chaque locale (elles apparaissaient auparavant comme des clés brutes
+  non traduites).
+- Formulation des locales : ordre du nom RSSI en tchèque, casse de phrase en polonais,
+  terme « brut » en russe, noms composés en néerlandais et danois, terme du stabilisant
+  en chinois.
+- Flux de configuration : conservation de la calibration déjà saisie lors du choix de la
+  saisie MAC manuelle ; définition d'un `unique_id` pour les saisies manuelles afin
+  d'éviter de configurer deux fois le même appareil ; attribution d'une erreur de parsing
+  du pH au champ fautif.
+- Coordinator BLE : comparaison de la valeur de la commande en attente (pas seulement son
+  type) pour ne pas perdre un changement de mode de synchronisation fait pendant une
+  interrogation ; arrêt d'une fuite de handle de timer de sauvegarde par `_do_save` et
+  protection du callback de debounce à l'arrêt ; annulation d'un timer de retry armé au
+  passage hors de portée.
+- Entités : application immédiate d'un nouvel intervalle de scan en reprogrammant le timer
+  d'interrogation ; marquage d'un `last_received` naïf en UTC plutôt qu'en heure locale ;
+  maintien du capteur RSSI disponible tant que des annonces arrivent pendant les mesures
+  en pause.
 
 ## [1.1.0] - 2026-05-12
 
-### Added
+### Ajouté
 
-- Bluetooth discovery matchers for additional Flipr local names
-  (`F2B*` and `F30*`–`F3F*`), broadening automatic device detection.
+- Matchers de découverte Bluetooth pour des noms locaux Flipr supplémentaires
+  (`F2B*` et `F30*`-`F3F*`), élargissant la détection automatique des appareils.
 
-### Changed
+### Modifié
 
-- Refactored inline comments and improved code clarity.
-- Documentation updates (`README.md`, `README.fr.md`).
+- Refactorisation des commentaires inline et amélioration de la clarté du code.
+- Mises à jour de la documentation.
 
 ## [1.0.0] - 2026-04-19
 
-### Added
+### Ajouté
 
-- Initial release: local (BLE) integration for Flipr pool analysers, with
-  temperature, pH, ORP, estimated free chlorine, active chlorine (HOCl),
-  Langelier saturation index, battery and Bluetooth diagnostics.
-- Configurable pH/ORP calibration, temperature offset, water parameters
-  (TAC, TH, TDS, CyA) and alert thresholds via the options flow.
-- Chlorine/bromine model selection, sync-mode control and gateway mode.
+- Version initiale : intégration locale (BLE) pour les analyseurs de piscine Flipr, avec
+  température, pH, ORP, chlore libre estimé, chlore actif (HOCl), indice de saturation de
+  Langelier, batterie et diagnostics Bluetooth.
+- Calibration pH/ORP configurable, offset de température, paramètres de l'eau
+  (TAC, TH, TDS, CyA) et seuils d'alerte via le flux d'options.
+- Sélection du modèle chlore/brome, contrôle du mode de synchronisation et mode passerelle.
 
-[1.2.0]: https://github.com/Adrien40/ha-flipr-local/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/Adrien40/ha-flipr-local/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/Adrien40/ha-flipr-local/releases/tag/v1.0.0
+[1.2.0]: https://github.com/cgrard/ha-flipr-local/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/cgrard/ha-flipr-local/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/cgrard/ha-flipr-local/releases/tag/v1.0.0

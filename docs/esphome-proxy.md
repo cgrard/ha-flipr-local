@@ -1,5 +1,3 @@
-[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](esphome-proxy.fr.md) [![English](https://img.shields.io/badge/Language-English-red)](esphome-proxy.en.md)
-
 # Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome
 
 Guide de reverse engineering et de reflashage de la **passerelle WiFi Flipr (« FLIPR GATEWAY Rev02 »)** pour la transformer en **proxy Bluetooth ESPHome**, en complément de l'intégration [`ha-flipr-local`](https://github.com/Adrien40/ha-flipr-local).
@@ -180,14 +178,14 @@ Le connecteur **K2** est un header de programmation de production à 6 points (2
   Rangée 2 :  [ K2-4 ]   [ K2-5 ]   [ K2-6 ]
 ```
 
-| Position         | Signal         | Pin module | Rôle                           |
+| Position | Signal | Pin module | Rôle |
 |------------------|----------------|------------|--------------------------------|
-| **K2-1** (carré) | U0RXD / GPIO17 | 24         | RX de l'ESP (← TXD adaptateur) |
-| **K2-2**         | GND            | 1/28       | Masse commune                  |
-| **K2-3**         | U0TXD / GPIO16 | 25         | TX de l'ESP (→ RXD adaptateur) |
-| **K2-4**         | 3V3            | 2          | Alimentation 3,3 V             |
-| **K2-5**         | GPIO9 / BOOT   | 15         | BOOT (à GND pour download mode)|
-| **K2-6**         | EN             | 3          | Reset                          |
+| **K2-1** (carré) | U0RXD / GPIO17 | 24 | RX de l'ESP (← TXD adaptateur) |
+| **K2-2** | GND | 1/28 | Masse commune |
+| **K2-3** | U0TXD / GPIO16 | 25 | TX de l'ESP (→ RXD adaptateur) |
+| **K2-4** | 3V3 | 2 | Alimentation 3,3 V |
+| **K2-5** | GPIO9 / BOOT | 15 | BOOT (à GND pour download mode)|
+| **K2-6** | EN | 3 | Reset |
 
 > Le pad de test **PT3** est également relié à GND, et **PT6** au bouton (GPIO1) — pratiques comme points d'accès alternatifs.
 
@@ -197,17 +195,17 @@ Le connecteur **K2** est un header de programmation de production à 6 points (2
 
 Récapitulatif complet des GPIO utiles, vérifiés au multimètre :
 
-| Fonction              | GPIO    | Notes                                              |
+| Fonction | GPIO | Notes |
 |-----------------------|---------|----------------------------------------------------|
-| UART0 TX (flash)      | GPIO16  | K2-3                                               |
-| UART0 RX (flash)      | GPIO17  | K2-1                                               |
-| BOOT                  | GPIO9   | K2-5, strapping — flash uniquement                 |
-| EN / Reset            | EN      | K2-6                                               |
-| Bouton SW1            | GPIO1   | PT6, active-bas + pull-up                          |
-| LED Rouge             | GPIO5   | strapping ⚠                                        |
-| LED Verte             | GPIO4   | strapping ⚠                                        |
-| LED Bleue             | GPIO3   | —                                                  |
-| LED commune           | 3V3     | anode commune (cathodes pilotées, logique inversée)|
+| UART0 TX (flash) | GPIO16 | K2-3 |
+| UART0 RX (flash) | GPIO17 | K2-1 |
+| BOOT | GPIO9 | K2-5, strapping — flash uniquement |
+| EN / Reset | EN | K2-6 |
+| Bouton SW1 | GPIO1 | PT6, active-bas + pull-up |
+| LED Rouge | GPIO5 | strapping |
+| LED Verte | GPIO4 | strapping |
+| LED Bleue | GPIO3 | — |
+| LED commune | 3V3 | anode commune (cathodes pilotées, logique inversée)|
 
 ---
 
@@ -413,13 +411,13 @@ Configuration complète et autonome. Remplacez les valeurs entre crochets. La LE
 
 ### Schéma de couleurs
 
-| Couleur                | État                                          | Priorité |
+| Couleur | État | Priorité |
 |------------------------|-----------------------------------------------|----------|
-| 🔴 Rouge fixe          | WiFi déconnecté                               | 1 (max)  |
-| 🟠 Orange fixe         | WiFi OK, API Home Assistant injoignable       | 2        |
-| 🟣 Violet fixe         | Sonde non entendue depuis > 150 min           | 3        |
-| 🟢 Vert tamisé         | Tout nominal                                  | 4 (repos)|
-| 🔵 Pulse bleu bref     | Battement de vie (toutes les 5 min si nominal)| —        |
+| Rouge fixe | WiFi déconnecté | 1 (max) |
+| Orange fixe | WiFi OK, API Home Assistant injoignable | 2 |
+| Violet fixe | Sonde non entendue depuis > 150 min | 3 |
+| Vert tamisé | Tout nominal | 4 (repos)|
+| Pulse bleu bref | Battement de vie (toutes les 5 min si nominal)| — |
 
 Bouton : **appui court** = flash de diagnostic (+ refresh Flipr via HA) ; **appui long (3 s)** = bascule mode nuit (LED éteinte, persistant au reboot).
 

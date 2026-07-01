@@ -1,249 +1,251 @@
-[![Français](https://img.shields.io/badge/Langue-Fran%C3%A7ais-blue)](README.fr.md) [![English](https://img.shields.io/badge/Language-English-red)](README.md)
+# Flipr Local pour Home Assistant
 
-# Flipr Local for Home Assistant 🐬
+> **Fork.** Fork maintenu indépendamment de [`Adrien40/ha-flipr-local`](https://github.com/Adrien40/ha-flipr-local), dont le développement public s'est arrêté à la version 1.1.0. Tout le mérite de l'intégration d'origine revient à l'auteur amont ; ce fork en poursuit le développement. Principaux apports depuis la 1.1.0 (détail complet dans le [CHANGELOG](CHANGELOG.md)) :
+>
+> - **Recyclage de la passerelle WiFi Flipr en proxy Bluetooth ESPHome** ([`docs/esphome-proxy.md`](docs/esphome-proxy.md)), avec correctif de coexistence WiFi/BLE de l'ESP32-C6 (scan continu qui figeait la pile BLE en `out_of_range`) et automation « watchdog » de redémarrage.
+> - **Jauge de batterie fidèle** : courbe de décharge Li-SOCl2 (Saft LS26500) au lieu du pourcentage linéaire, qui ne donnait quasiment aucune alerte de fin de vie.
+> - **Fiabilité BLE** : changement de mode de synchronisation non perdu pendant une interrogation, nouvel intervalle de scan appliqué immédiatement, capteur RSSI maintenu pendant les mesures en pause, gestion propre des timers de retry.
+> - **Robustesse configuration/options** : calibration conservée en saisie MAC manuelle, `unique_id` empêchant de configurer deux fois le même appareil, clés d'erreur et libellés de traduction manquants corrigés (NL, PT-BR, CS, PL, RU, DA, ZH).
+> - **Qualité du code** : suite de tests (unitaires et d'intégration mockés) avec intégration continue portant la couverture à environ 80 %, et refactorisations sans changement de comportement (`_async_update_data` passé d'une complexité de 47 à 11).
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/v/release/Adrien40/ha-flipr-local)](https://github.com/Adrien40/ha-flipr-local/releases)
-
-If you find this project useful, you can support its development 🙏
-
-<a href="https://www.buymeacoffee.com/adrien40"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" width="160"></a>
+[![GitHub Release](https://img.shields.io/github/v/release/cgrard/ha-flipr-local)](https://github.com/cgrard/ha-flipr-local/releases)
 
 ---
 
-## ⚡ Quick Summary
+## En résumé
 
-- 🔌 Works over Bluetooth (100% local)
-- 🏠 Home Assistant compatible (cloud-free)
-- 🌡️ Measurements: pH, ORP (Redox), Active Chlorine, Temperature
-- 🔋 Optimized to preserve battery life
-- ⚙️ Installed via HACS in 2 minutes
+- Fonctionnement 100 % local via Bluetooth (BLE)
+- Compatible Home Assistant (sans cloud)
+- Mesures : pH, Redox, Chlore Actif, Température
+- Optimisé pour préserver la batterie
+- Installation via HACS en 2 minutes
 
 ---
 
-## 📸 Home Assistant Examples
+## Exemples dans Home Assistant
 
-### 📊 Overview
+### Visualisation
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Adrien40/ha-flipr-local/main/docs/screenshots/dashboard_overview.png" width="500">
+  <img src="https://raw.githubusercontent.com/cgrard/ha-flipr-local/main/docs/screenshots/dashboard_overview.png" width="500">
 </p>
 
 <p align="center">
-  <em>📊 Dashboard overview of pool data in Home Assistant</em>
+  <em> Vue d’ensemble des données de la piscine dans Home Assistant</em>
 </p>
 
 ---
 
-### 🔍 Technical Details
+### Détails techniques
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Adrien40/ha-flipr-local/main/docs/screenshots/entities_overview.png" width="248">
-  <img src="https://raw.githubusercontent.com/Adrien40/ha-flipr-local/main/docs/screenshots/entities_configuration.png" width="248">
+  <img src="https://raw.githubusercontent.com/cgrard/ha-flipr-local/main/docs/screenshots/entities_overview.png" width="248">
+  <img src="https://raw.githubusercontent.com/cgrard/ha-flipr-local/main/docs/screenshots/entities_configuration.png" width="248">
 </p>
 
 <p align="center">
-  <em>🔍 Entities exposed by the integration & ⚙️ Advanced configuration options</em>
+  <em> Entités exposées par l’intégration & Options de Configuration avancées</em>
 </p>
 
 ---
 
-A **100% local integration for Home Assistant** that turns your Flipr analyzer into a Bluetooth Low Energy (BLE) sensor, allowing you to monitor and control your pool without any cloud dependency. 🛡️
+Une **intégration 100% locale pour Home Assistant** qui transforme votre analyseur Flipr en capteur Bluetooth Low Energy (BLE), afin de piloter et surveiller votre piscine sans aucune dépendance au Cloud.
 
-> ⚠️ **Warning**: This integration directly polls the Flipr over Bluetooth. If you use the official Wi-Fi gateway alongside it, rigorous sync mode management is built-in to prevent battery drain.
+> **Avertissement** : Cette intégration interroge le Flipr directement en Bluetooth. Si vous utilisez la passerelle Wi-Fi officielle en parallèle, une gestion rigoureuse des modes de synchronisation est intégrée pour préserver la batterie.
 
-### 💡 Why this integration?
+### Pourquoi cette intégration ?
 
-As the company CTAC-TECH / Flipr is undergoing liquidation, access to their cloud servers has become uncertain. **Flipr Local** is the result of extensive **Reverse Engineering** to transform your analyzer into a reliable local industrial sensor, capable of communicating directly with your Home Assistant instance.
-Flipr Local lets you replace the cloud with a **local control** solution, providing robust **pool monitoring** based on a **BLE sensor**.
-
----
-
-### ✅ Compatibility
-
-* 🏷️ **Supported Models**: Flipr AnalysR (All Bluetooth versions - with or without a subscription).
-* 🌐 **Flexible Usage**: Works with or without the Flipr Connect Wi-Fi gateway.
-* 🏅 **Tested on**: Validated with **Flipr AnalysR 3** and **Flipr Start Max**.
-* 🛠️ **Required Hardware**: Internal Bluetooth, USB Bluetooth dongle, or **ESPHome Bluetooth Proxy** (Highly recommended, [easy installation here](https://esphome.github.io/bluetooth-proxies/)).
-* 📶 **Signal Quality**: A stable **RSSI signal (ideally above -75 dBm)** is critical to ensure connection to the Flipr. Testing shows that signals below **-80 dBm** can cause frequent failures.
-* ⏱️ **Real-time Monitoring**: A `sensor.*_bluetooth_signal` entity, using passive listening in Home Assistant, lets you monitor the signal strength in real-time without draining the probe's battery!
-
-> ❌ **Not Compatible**: Versions that operate exclusively via the Sigfox network are not supported.
+Le fabricant historique **CTAC Tech** (Flipr) a été placé en liquidation judiciaire ; la marque a depuis été reprise par une nouvelle société, **Yotilus** (bascule commerciale au 1ᵉʳ juin 2026, société en cours de création). Dans ce contexte de reprise, la pérennité et les conditions d'accès aux serveurs cloud restent incertaines. **Flipr Local** est le fruit d'un travail de **Reverse Engineering** approfondi pour transformer votre analyseur en un véritable capteur industriel local, capable de communiquer directement avec votre instance Home Assistant.
+Flipr Local permet de remplacer le cloud par une solution de **local control**, tout en offrant un système fiable de **pool monitoring** basé sur un **BLE sensor**.
 
 ---
 
-### ✨ Key Features
+### Compatibilité
 
-* 🏠 **100% Local (BLE)**: No cloud dependency, no subscriptions, no latency.
-* 🌡️ **Raw Sensor Data**: Temperature, pH, ORP (Redox), Battery (%).
-* 🚀 **Real-time Analysis**: Trigger a manual measurement whenever you want.
-* 🔬 **Scientific Accuracy**: pH calculation using the Nernst equation with temperature compensation.
-* 🛜 **Gateway-Free**: The gateway is not required, but keeping it allows you to maintain cloud access on the official mobile app!
-* 🧪 **Advanced Chemical Intelligence**:
-  * **Langelier Saturation Index (LSI)** calculation to determine if the water is balanced, scaling, or corrosive.
-  * **Estimated Free Chlorine (FC)** calculated via the Nernst model (ORP + pH).
-  * **Active Chlorine (HOCl)** calculated via the thermodynamic model (O'Brien / USEPA), accounting for temperature and stabilizer (CYA).
-* 🟤 **Multi-Treatment Support**: Supports **Bromine** (intelligently disables chlorine-specific sensors) and pools without stabilizer (CYA = 0).
-* ⚙️ **100% UI Configuration**: Automatic Bluetooth discovery, probe calibration, and alert threshold setup directly from the Home Assistant interface (no YAML required).
-* 🔄 **Sync Modes**: Control the sync mode (Sleep, Eco, Normal, Boost) for users with the Wi-Fi gateway, preventing battery drain.
-* 🌍 **Multi-language**: Developed in French 🇫🇷 and available in EN, ES, DE, IT, NL, PL, PT, PT-BR, SV, RU, ZH-HANS, ZH-HANT, CS, HU, EL, HR, DA, NB (AI translation).
-* 📡 Transforms your Flipr into a true **BLE sensor** for Home Assistant.
+* **Modèles supportés** : Flipr AnalysR (Toutes versions Bluetooth - avec ou sans abonnement).
+* **Usage flexible** : Compatible avec ou sans la passerelle Wi-Fi Flipr Connect.
+* **Testé sur** : Validé sur **Flipr AnalysR 3** et **Flipr Start Max**.
+* **Matériel requis** : Bluetooth interne, clé USB Bluetooth ou **Bluetooth Proxy ESPHome** (Fortement recommandé, [installation facile ici](https://esphome.github.io/bluetooth-proxies/)).
+* **Qualité du signal** : Un signal **RSSI stable (idéalement supérieur à -75 dBm)** est indispensable pour garantir la connexion au Flipr. Les tests montrent qu'un signal inférieur à **-80 dBm** peut entraîner des échecs fréquents.
+* ⏱ **Temps réel** : Une entité `sensor.*_signal_bluetooth`, utilisant l'écoute passive de Home Assistant, vous permet de surveiller la force du signal en temps réel sans vider la batterie de la sonde !
+
+> **Non compatible** : Les versions fonctionnant uniquement via le réseau Sigfox ne sont pas supportées.
 
 ---
 
-### 🚀 Installation
+### Points forts
 
-#### Via HACS (Recommended)
-
-As this repository is not (yet) in the official default list, you must add it as a custom repository.
-
-1. Open **HACS** in Home Assistant.
-2. Click the 3 dots in the top right corner and select **Custom repositories**.
-3. In **Repository**, paste the URL: `https://github.com/Adrien40/ha-flipr-local`
-4. In **Type**, choose **Integration**, then click **Add**.
-5. Once added, a window appears: click **Download** (select the latest version).
-6. **Completely restart Home Assistant**.
-7. Go to **Settings** > **Devices & Services** > **Add Integration** and search for "Flipr Local".
-
-### Manual
-
-Copy the `custom_components/flipr_local` folder into the `custom_components` directory of your Home Assistant configuration, then restart.
-
----
-
-### 🌐 Managing the Wi-Fi Gateway (Flipr Connect)
-
-The integration works perfectly alongside your official setup:
-
-* **WITHOUT Gateway**: Home Assistant wakes the Flipr according to the polling interval you selected (default: every 60 min).
-* **WITH Gateway**: Configure the Flipr to **Eco Mode** (2 measures/day) or Sleep (0 measure/day) via the integration options. The official gateway handles the cloud sync, while Home Assistant reads the data locally without draining the battery.
+* **100% Local (BLE)** : Aucune dépendance au Cloud, pas d'abonnement, pas de latence.
+* **Remontée des capteurs bruts** : Température, pH, ORP (Redox), Batterie (%).
+* **Analyse en temps réel** : Lancez une mesure manuelle quand vous le souhaitez.
+* **Précision Scientifique** : Calcul du pH par l'équation de Nernst avec compensation de température.
+* **Sans Passerelle** : La passerelle n'est pas nécessaire, mais elle permet de conserver le Cloud sur l'application mobile officielle !
+* **Intelligence Chimique Avancée** :
+  * Calcul de l'**Indice de Langelier** (ISL) pour déterminer si l'eau est équilibrée, entartrante ou corrosive.
+  * **Chlore Libre Estimé (FC)** calculé via le modèle de Nernst (ORP + pH).
+  * **Chlore Actif (HOCl)** calculé via le modèle thermodynamique (O'Brien / USEPA) prenant en compte la température et le stabilisant (CYA).
+* **Support Multi-Traitements** : Prise en charge du **Brome** (désactive intelligemment les capteurs spécifiques au chlore) et des piscines sans stabilisant (CYA = 0).
+* **Configuration 100% UI** : Découverte automatique Bluetooth, calibrage des sondes et réglage des seuils d'alerte directement depuis l'interface Home Assistant (aucun YAML requis).
+* **Modes de Synchronisation** : Contrôle du mode de synchronisation (Sommeil, Éco, Normal, Boost) pour les utilisateurs possédant la passerelle Wi-Fi, afin d'éviter de vider la batterie.
+* **Multi-langue** : Développé en Français et disponible en EN, ES, DE, IT, NL, PL, PT, PT-BR, SV, RU, ZH-HANS, ZH-HANT, CS, HU, EL, HR, DA, NB (Traduction via IA).
+* Transforme votre Flipr en véritable **BLE sensor** pour Home Assistant
 
 ---
 
-### 📊 Available Sensors and Controls
+### Installation
 
-| Entity | Unit / Type | Description |
+#### Via HACS (Recommandé)
+
+Ce dépôt n'étant pas (encore) dans la liste officielle par défaut, vous devez l'ajouter en tant que dépôt personnalisé.
+
+1. Ouvrez **HACS** dans votre Home Assistant.
+2. Cliquez sur les 3 petits points en haut à droite et sélectionnez **Dépôts personnalisés**.
+3. Dans **Dépôt**, collez l'URL : `https://github.com/cgrard/ha-flipr-local`
+4. Dans **Type**, choisissez **Intégration** puis cliquez sur **Ajouter**.
+5. Une fois ajouté, une fenêtre apparaît : cliquez sur **Télécharger** (sélectionnez la dernière version).
+6. **Redémarrez complètement Home Assistant**.
+7. Allez dans **Paramètres** > **Appareils et Services** > **Ajouter une intégration** et cherchez "Flipr Local".
+
+### Manuelle
+
+Copiez le dossier `custom_components/flipr_local` dans le dossier `custom_components` de votre configuration Home Assistant, puis redémarrez.
+
+---
+
+### Gestion de la Passerelle Wi-Fi (Flipr Connect)
+
+L'intégration cohabite parfaitement avec votre installation officielle :
+
+* **SANS Passerelle** : Home Assistant réveille le Flipr selon l'intervalle que vous avez choisi (par défaut : toutes les 60 min).
+* **AVEC Passerelle** : Configurez le Flipr en **Mode Éco** (2 mesures/jour) ou Sommeil (0 mesure/jour) via les options. La passerelle officielle assure le cloud, tandis que Home Assistant lit les données localement sans épuiser la batterie.
+
+---
+
+### Capteurs et Contrôles disponibles
+
+| Entité | Unité / Type | Description |
 | :--- | :--- | :--- |
-| 💧 **pH** | pH | Calculated pH (Nernst + Temp Compensation). |
-| ⚡ **Redox / ORP** | mV | Oxidation-Reduction Potential. |
-| 🌡️ **Temperature** | °C | Precise water temperature. |
-| 🌫️ **Estimated Free Chlorine** | ppm | Estimated free chlorine level (FC). |
-| 🧪 **Active Chlorine** | mg/L | Estimated actual disinfection power (HOCl). |
-| ⚖️ **Langelier Index** | LSI | Water balance indicator (Corrosive, Balanced, or Scaling). |
-| 🎯 **Equilibrium pH** | pH | Target ideal pH calculated via the Taylor Balance. |
-| 🔋 **Battery** | % and mV | Charge level (%) and raw battery voltage. |
-| 📶 **RSSI Signal** | dBm | Real-time received Bluetooth signal strength. |
-| 🔵 **Bluetooth State** | Status | Detailed connection state (Connected, Sleeping, Error...). |
-| 🔄 **Sync Mode** | Diagnostic | Current probe mode read from the BLE frame (Eco, Boost...). |
-| ⏱️ **Next Analysis** | Timestamp | Estimated time of the next data poll. |
-| 🚀 **New Analysis** | Button | **Trigger an instant analysis (~60s).** |
-| ⏸️ **Auto Analyses** | Switch | Enable/Disable automatic polling (Pause Mode). |
+| **pH** | pH | pH calculé (Nernst + Compensation thermique). |
+| **Redox / ORP** | mV | Potentiel d'oxydoréduction. |
+| **Température** | °C | Température précise de l'eau. |
+| **Chlore Libre Estimé** | ppm | Estimation du taux de Chlore Libre (FC). |
+| **Chlore Actif** | mg/L | Estimation de la puissance réelle de désinfection (HOCl). |
+| **Indice de Langelier** | ISL | Indicateur d'équilibre de l'eau (Corrosive, Équilibrée ou Entartrante). |
+| **pH d'Équilibre** | pH | Cible du pH idéal calculé selon la Balance de Taylor. |
+| **Batterie** | % et mV | Niveau de charge (%) et tension brute de la pile. |
+| **Signal RSSI** | dBm | Force du signal Bluetooth reçu en temps réel. |
+| **État Bluetooth** | Statut | État détaillé de la connexion (Connecté, En veille, Erreur...). |
+| **Mode Sync** | Diagnostic | Mode actuel de la sonde lu dans la trame Bluetooth (Éco, Boost...). |
+| ⏱ **Prochaine Analyse** | Horodatage | Heure estimée de la prochaine relève de données. |
+| **Nouvelle Analyse** | Bouton | **Lancer une analyse instantanée (~60s).** |
+| ⏸ **Analyses Auto.** | Interrupteur | Activer/Désactiver la relève automatique (Mode Pause). |
 
-> 🛠️ **Diagnostic**: The integration also exposes advanced sensors (raw pH in mV, factory formula pH, raw hex frame, and binary alert statuses).
+> **Diagnostic** : L'intégration expose également des capteurs avancés (pH brut en mV, pH formule usine d'origine, trame hexadécimale brute complète, et statuts d'alertes binaires).
 
 ---
 
-### 🧪 Chemical Expertise: Professional-Grade Analysis
+### Expertise Chimique : Une analyse de niveau Professionnel
 
-👉 No need to understand these calculations: everything is automated in Home Assistant.
+ Pas besoin de comprendre ces calculs : tout est automatisé dans Home Assistant.
 
 <details>
-<summary>🔬 View scientific details</summary>
+<summary> Voir les détails scientifiques</summary>
 
-#### 1. Active Chlorine (The true disinfection power) 🧂
+#### 1. Le Chlore Actif (Le vrai pouvoir désinfectant)
 
-The ORP (Redox) probe does not measure the quantity of chlorine (mg/L), but the **disinfection strength** of the water. This power drops significantly as the pH rises. Flipr Local cross-references your ORP and pH in real-time to provide an estimate of the **Active Chlorine** level, the only true indicator to know if your water is properly sanitizing.
+La sonde Redox (ORP) ne mesure pas la quantité de chlore (mg/L), mais la **force de désinfection** de l'eau. Cette puissance s'effondre quand le pH augmente. Flipr Local croise votre Redox et votre pH en temps réel pour vous donner une estimation du taux de **Chlore Actif**, le seul vrai indicateur pour savoir si votre eau est désinfectante.
 
-#### 2. Water Balance: Langelier Saturation Index & Taylor Balance ⚖️
+#### 2. Équilibre de l'eau : Indice de Saturation de Langelier & Balance de Taylor
 
-The Langelier Saturation Index (LSI) is the essential companion to the **Taylor Balance**. It determines if your water is:
+L'Indice de Saturation de Langelier (ISL) est le complément indispensable de la **Balance de Taylor**. Il permet de vérifier si votre eau est :
 
-* **Corrosive (LSI < -0.3)**: The water is eating away at your seals, liner, and metals.
-* **Balanced (LSI between -0.3 and +0.3)**: Perfect water.
-* **Scaling (LSI > +0.3)**: Risk of calcium deposits.
+* **Corrosive (ISL < -0.3)** : L'eau attaque vos joints, liner et métaux.
+* **Équilibrée (ISL entre -0.3 et +0.3)** : L'eau parfaite.
+* **Entartrante (ISL > +0.3)** : Risque de dépôts calcaires.
 
-Enter your Alkalinity (TAC), Hardness (TH), and TDS in the options, and Home Assistant will calculate your balance live based on the temperature read by the Flipr!
+Renseignez votre TAC, TH et TDS dans les options, et Home Assistant calculera votre équilibre en direct selon la température lue par le Flipr !
 
-> **Diagnostic**: The integration also exposes the raw pH (mV), the factory-calculated pH, the full hex frame, and the timestamp of the last measurement.
+> **Diagnostic** : L'intégration expose également le pH brut (mV), le pH calculé par la formule d'usine, la trame hexadécimale complète et l'horodatage de la dernière mesure.
 
 </details>
 
-### 🎯 A Note on Measurement Accuracy
+### Note sur la précision des mesures
 
-The values displayed in Home Assistant may differ slightly from the official Flipr app.
+Les valeurs affichées dans Home Assistant peuvent différer légèrement de celles de l'application officielle Flipr.
 
-Flipr Local enables "high-precision" calibration. Unlike the mobile app, which uses fixed values, our integration allows you to enter the exact value of your buffer solution (pH 7.02, 4.01, etc.) adjusted for temperature during calibration. This scientific rigor may create a slight discrepancy, indicating a measurement that is closer to the reality of your pool. 🔬
-
----
-
-## 🚀 Configuration
-
-1. Go to **Settings** > **Devices & Services**.
-2. The integration should automatically discover your Flipr if your Bluetooth adapter/antenna is in range.
-3. Click **Add Integration** and search for **Flipr Local**.
-4. Follow the on-screen instructions to define the treatment type (Chlorine, Bromine) and the calibration/offset of your probes.
-
-### ⚙️ Options, Calibrations, and Alerts
-
-Once the device is added, you can click on **Configure** ⚙️ to:
-
-* Adjust your calibration solution values (pH 4, pH 7, ORP).
-* Modify your water parameters (TAC, TH, TDS, Stabilizer) via the dashboard.
-* Define your **custom alert thresholds** (Min/Max pH, Min/Max ORP, etc.) to trigger your own automations.
-
-> 🎛️ For a step-by-step walkthrough of probe calibration and alert thresholds, see the [Calibration Guide](docs/calibration.en.md).
+Flipr Local permet une calibration "haute précision". Contrairement à l'application mobile qui utilise des valeurs fixes, notre intégration vous permet de saisir la valeur exacte de votre solution tampon (pH 7.02, 4.01, etc.) ajustée à la température lors de votre calibration. C'est cette rigueur scientifique qui peut créer un léger décalage, signe d'une mesure plus proche de la réalité de votre bassin.
 
 ---
 
-### 🐛 Troubleshooting
+## Configuration
+
+1. Allez dans **Paramètres** > **Appareils et services**.
+2. L'intégration devrait détecter automatiquement votre Flipr si votre clé/antenne Bluetooth est à portée.
+3. Cliquez sur **Ajouter une intégration** et recherchez **Flipr Local**.
+4. Suivez les instructions à l'écran pour définir le type de traitement (Chlore, Brome) et le calibrage/décalage de vos sondes.
+
+### Options, Calibrations et Alertes
+
+Une fois l'appareil ajouté, vous pouvez cliquer sur **Configurer** pour :
+
+* Ajuster les valeurs de vos solutions de calibration (pH 4, pH 7, Redox).
+* Modifier les paramètres de votre eau (TAC, TH, TDS, Stabilisant) via le tableau de bord.
+* Définir vos **seuils d'alerte personnalisés** (pH Min/Max, ORP Min/Max, etc.) pour piloter vos propres automatisations.
+
+> Pour un pas-à-pas de la calibration des sondes et des seuils d'alerte, voir le [Guide de Calibration](docs/calibration.md).
+
+---
+
+### Dépannage
 
 <details>
-<summary>⚠️ View common issues</summary>
-  
-* **Frequent Bluetooth errors**: The integration automatically handles connection retries. If the sensor shows `Signal Lost`, the Flipr is out of range. Move your antenna closer or [install an ESPHome Bluetooth Proxy](https://esphome.github.io/bluetooth-proxies/) as close to the pool as possible (only requires an ESP32 (~10€) and a USB charger).
-* **Free and Active Chlorine show "Unknown"**: If you selected "Bromine" in the options, this is normal behavior. Bromine is not calculated the same way as chlorine. Rely on the ORP (Redox) probe value.
-* **I don't use stabilizer**: Simply set the `CyA (Stabilizer)` entity to `0`. The chemical calculation will adapt automatically.
+<summary> Voir les problèmes fréquents</summary>
+
+* **Erreurs Bluetooth fréquentes** : L'intégration gère automatiquement les tentatives de connexion. Si le capteur indique `Signal Perdu`, le Flipr est hors de portée. Rapprochez votre antenne ou [installez un Proxy Bluetooth ESPHome](https://esphome.github.io/bluetooth-proxies/) au plus près du bassin (nécessite juste un ESP32 (~10€) et un chargeur USB).
+* **Chlore Libre et Actif en "Inconnu"** : Si vous avez sélectionné "Brome" dans les options, c'est le comportement normal. Le brome ne se calcule pas comme le chlore. Fiez-vous à la valeur de la sonde Redox (ORP).
+* **Je n'ai pas de stabilisant** : Réglez simplement l'entité `CyA (Stabilisant)` sur `0`. Le calcul chimique s'adaptera automatiquement.
 
 </details>
 
 ---
 
-### 🛠️ Hardware Rescue:
+### Sauvetage Matériel :
 
 <details>
-<summary>🔧 View the complete procedure</summary>
+<summary> Voir la procédure complète</summary>
 
-If your Flipr probes are dead, you can replace them yourself!
+Si les sondes de votre Flipr sont HS, vous pouvez les remplacer vous-même !
 
-**Hardware required:**
+**Matériel requis :**
 
-1. Replacement probes (pH and ORP) with a BNC connector (Recommended dimensions: **12 mm diameter, 15-16 cm long**).
-2. Two adapter cables (**Pigtails**): `Right-angle MMCX Male (90°) to BNC Female`. *The right-angle connector is essential to be able to close the Flipr cover.*
+1. Des sondes de remplacement (pH et ORP) avec connecteur BNC (Dimensions recommandées : **12 mm de diamètre, 15-16 cm de long**).
+2. Deux câbles adaptateurs (**Pigtails**) : `MMCX Mâle coudé (90°) vers BNC Femelle`. *Le connecteur coudé est indispensable pour pouvoir refermer le capot du Flipr.*
 
-**Quick Procedure:**
-Remove the old probes, clean the white base. Plug the MMCX adapters into the motherboard (`PH` and `ORP` ports). Pass the new probes through the original holes (12 mm), connect them to the BNC cables. Calibrate via Home Assistant, and you're good to go!
+**Procédure rapide :**
+Retirez les anciennes sondes, nettoyez la base blanche. Branchez les adaptateurs MmCX sur la carte mère (Ports `PH` et `ORP`). Passez les nouvelles sondes dans les trous d'origine (12 mm), connectez-les aux câbles BNC. Calibrez via Home Assistant, et c'est reparti !
 
 </details>
 
-> 📡 **Recycle the WiFi gateway**: rather than buying a dedicated ESP32, you can reflash the obsolete Flipr WiFi gateway into an ESPHome Bluetooth proxy. See the full reverse-engineering guide: [Recycling the Flipr WiFi gateway into an ESPHome Bluetooth proxy](docs/esphome-proxy.en.md).
+> **Recyclez la passerelle WiFi** : plutôt que d'acheter un ESP32 dédié, vous pouvez reflasher la passerelle WiFi Flipr devenue inutile en proxy Bluetooth ESPHome. Voir le guide complet de reverse engineering : [Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome](docs/esphome-proxy.md).
 
 ---
 
-### 🤝 Contributions & Support
+### Contributions & Support
 
-If you own an older version of the Flipr (1 or 2) and the integration works for you, please let us know!
-For any bugs or feature requests, please open an [Issue](https://github.com/Adrien40/ha-flipr-local/issues) on this repository.
+Si vous possédez une version plus ancienne du Flipr (1 ou 2) et que l'intégration fonctionne chez vous, n'hésitez pas à l'indiquer !
+Pour tout bug ou demande d'amélioration, merci d'ouvrir une [Issue](https://github.com/cgrard/ha-flipr-local/issues) sur ce dépôt.
 
-### ⚠️ Disclaimer
+### Avertissement (Disclaimer)
 
-This integration is an independent project. It has no affiliation, directly or indirectly, with the company CTAC-TECH / Flipr. Use this software at your own risk.
+Cette intégration est un projet indépendant. Elle n'a aucun lien, de près ou de loin, avec les sociétés CTAC Tech, Yotilus ni avec la marque Flipr. L'utilisation de ce logiciel se fait sous votre propre responsabilité.
 
-### ⚖️ License
+### Licence
 
-Project licensed under **GPLv3**. Independent from the Flipr company. Use entirely at your own risk.
+Projet sous licence **GPLv3**. Indépendant de la société Flipr. Utilisation sous votre entière responsabilité.
 
 ---
 
-**Developed with ❤️ by @Adrien40**
+**Développé par @Adrien40**
 
-<a href="https://www.buymeacoffee.com/adrien40"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" width="180"></a>
+<!-- Keywords: Home Assistant custom integration, BLE sensor, pool monitoring, local control -->
