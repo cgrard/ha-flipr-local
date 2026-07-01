@@ -151,7 +151,8 @@ async def test_options_submit_eco_saves(hass):
     entry = _options_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result2 = await hass.config_entries.options.async_configure(
-        result["flow_id"], _options_input("2")  # Eco mode -> no battery warning
+        result["flow_id"],
+        _options_input("2"),  # Eco mode -> no battery warning
     )
     assert result2["type"] == "create_entry"
 
@@ -160,7 +161,8 @@ async def test_options_submit_high_sync_mode_warns(hass):
     entry = _options_entry(hass)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result2 = await hass.config_entries.options.async_configure(
-        result["flow_id"], _options_input("1")  # Normal mode + gateway -> warning step
+        result["flow_id"],
+        _options_input("1"),  # Normal mode + gateway -> warning step
     )
     assert result2["type"] == "form"
     assert result2["step_id"] == "warning"
