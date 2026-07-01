@@ -1,22 +1,29 @@
-# Test dependencies for the Flipr Local integration.
+# Dépendances de test de l'intégration Flipr Local.
 #
-# pytest-homeassistant-custom-component pulls in Home Assistant core, pytest,
-# pytest-asyncio and the test helpers needed to import the integration.
-pytest-homeassistant-custom-component
+# pytest-homeassistant-custom-component tire Home Assistant core, pytest,
+# pytest-asyncio et les helpers de test nécessaires à l'import de l'intégration.
+# Épinglé pour que la suite de tests tourne contre une version Home Assistant
+# connue (2026.2.3, qui exige Python 3.13). Non épinglé, la CI résout le Home
+# Assistant que le Python courant supporte, ce qui finit par diverger des pins
+# Bluetooth ci-dessous et casse l'import (par ex. cannot import name
+# 'get_manufacturer_from_mac' from bluetooth_adapters). À faire évoluer en même
+# temps que les pins Bluetooth ci-dessous lors d'une montée de Home Assistant.
+pytest-homeassistant-custom-component==0.13.316
 
-# Importing the integration package runs __init__.py, which imports
-# homeassistant.components.bluetooth (declared as a dependency in manifest.json).
-# That component — and the usb component it pulls in — require the following
-# third-party libraries. Home Assistant installs them automatically at runtime;
-# in CI we must provide them explicitly. Versions mirror the HA pins for the
-# Home Assistant release shipped by pytest-homeassistant-custom-component above;
-# bump them together when upgrading Home Assistant.
-bleak==0.22.3
-bleak-retry-connector==3.6.0
-bluetooth-adapters==0.20.2
-bluetooth-auto-recovery==1.4.2
-bluetooth-data-tools==1.20.0
-dbus-fast==2.24.3
-habluetooth==3.7.0
+# Importer le paquet de l'intégration exécute __init__.py, qui importe
+# homeassistant.components.bluetooth (déclaré comme dépendance dans manifest.json).
+# Ce composant, et le composant usb qu'il tire, ont besoin des bibliothèques
+# tierces suivantes. Home Assistant les installe automatiquement au runtime ;
+# en CI on doit les fournir explicitement. Les versions reflètent les pins des
+# manifests bluetooth et usb de Home Assistant pour la version épinglée ci-dessus ;
+# à faire évoluer ensemble lors d'une montée de Home Assistant (les lire depuis
+# les manifests du HA installé).
+bleak==2.1.1
+bleak-retry-connector==4.4.3
+bluetooth-adapters==2.1.0
+bluetooth-auto-recovery==1.5.3
+bluetooth-data-tools==1.28.4
+dbus-fast==3.1.2
+habluetooth==5.8.0
+aiousbwatcher==1.1.1
 pyserial==3.5
-pyudev==0.24.1
