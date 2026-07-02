@@ -1,4 +1,5 @@
 # Copyright (c) 2026 Adrien40
+# Copyright (c) 2026 cgrard
 # This file is part of Flipr Local.
 
 from homeassistant.helpers.dispatcher import async_dispatcher_connect

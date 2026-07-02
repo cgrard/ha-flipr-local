@@ -1,4 +1,5 @@
 # Copyright (c) 2026 Adrien40
+# Copyright (c) 2026 cgrard
 # This file is part of Flipr Local.
 
 from custom_components.flipr_local.config_flow import (
