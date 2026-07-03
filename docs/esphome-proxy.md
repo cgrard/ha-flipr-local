@@ -4,6 +4,8 @@ Guide de reverse engineering et de reflashage de la **passerelle WiFi Flipr (« 
 
 L'objectif : au lieu de jeter la passerelle devenue inutile et d'acheter un ESP32 dédié comme proxy Bluetooth, on **réutilise le matériel existant**. La passerelle embarque un ESP32-C6, parfaitement adapté au rôle de `bluetooth_proxy` pour relayer le BLE de la sonde Flipr AnalysR jusqu'à Home Assistant.
 
+Vous partez plutôt d'un **ESP32 neuf** (sans recycler la passerelle) ? Voir [`esphome-proxy-esp32.md`](esphome-proxy-esp32.md) pour une config de référence minimale.
+
 > **Avertissement.** Ce guide implique d'ouvrir le matériel, de souder/sonder des points de test et de remplacer le firmware d'origine. Vous le faites à vos propres risques. Faites impérativement une sauvegarde du firmware d'origine (voir plus bas) avant tout flash.
 
 ---
@@ -115,7 +117,7 @@ graph LR
 - ESPHome (via Docker, l'add-on Home Assistant, ou la CLI).
 - Quelques fils fins type Dupont et idéalement un connecteur type 2x3p au pas de 2,54 mm pour le connecteur K2 mais ça peut se faire avec de simples fils.
 
-> **WSL2 / Windows** : une étape supplémentaire est nécessaire pour exposer l'adaptateur USB-TTL à WSL2 — voir [Préparer l'adaptateur USB-TTL sous WSL2](#préparer-ladaptateur-usb-ttl-sous-wsl2).
+> **WSL2 / Windows** : une étape supplémentaire est nécessaire pour exposer l'adaptateur USB-TTL à WSL2 - voir [Préparer l'adaptateur USB-TTL sous WSL2](#préparer-ladaptateur-usb-ttl-sous-wsl2).
 
 ---
 
@@ -179,15 +181,15 @@ Le connecteur **K2** est un header de programmation de production à 6 points (2
 ```
 
 | Position | Signal | Pin module | Rôle |
-|------------------|----------------|------------|--------------------------------|
+| --- | --- | --- | --- |
 | **K2-1** (carré) | U0RXD / GPIO17 | 24 | RX de l'ESP (← TXD adaptateur) |
 | **K2-2** | GND | 1/28 | Masse commune |
 | **K2-3** | U0TXD / GPIO16 | 25 | TX de l'ESP (→ RXD adaptateur) |
 | **K2-4** | 3V3 | 2 | Alimentation 3,3 V |
-| **K2-5** | GPIO9 / BOOT | 15 | BOOT (à GND pour download mode)|
+| **K2-5** | GPIO9 / BOOT | 15 | BOOT (à GND pour download mode) |
 | **K2-6** | EN | 3 | Reset |
 
-> Le pad de test **PT3** est également relié à GND, et **PT6** au bouton (GPIO1) — pratiques comme points d'accès alternatifs.
+> Le pad de test **PT3** est également relié à GND, et **PT6** au bouton (GPIO1) - pratiques comme points d'accès alternatifs.
 
 ---
 
@@ -196,22 +198,22 @@ Le connecteur **K2** est un header de programmation de production à 6 points (2
 Récapitulatif complet des GPIO utiles, vérifiés au multimètre :
 
 | Fonction | GPIO | Notes |
-|-----------------------|---------|----------------------------------------------------|
+| --- | --- | --- |
 | UART0 TX (flash) | GPIO16 | K2-3 |
 | UART0 RX (flash) | GPIO17 | K2-1 |
-| BOOT | GPIO9 | K2-5, strapping — flash uniquement |
+| BOOT | GPIO9 | K2-5, strapping - flash uniquement |
 | EN / Reset | EN | K2-6 |
 | Bouton SW1 | GPIO1 | PT6, active-bas + pull-up |
 | LED Rouge | GPIO5 | strapping |
 | LED Verte | GPIO4 | strapping |
-| LED Bleue | GPIO3 | — |
-| LED commune | 3V3 | anode commune (cathodes pilotées, logique inversée)|
+| LED Bleue | GPIO3 | - |
+| LED commune | 3V3 | anode commune (cathodes pilotées, logique inversée) |
 
 ---
 
 ## Préparer l'adaptateur USB-TTL sous WSL2
 
-*Cette section ne concerne que les utilisateurs de **Windows + WSL2**. Sous Linux natif ou macOS, l'adaptateur apparaît directement (typiquement `/dev/ttyUSB0` ou `/dev/ttyACM0`) — passez à la section suivante.*
+*Cette section ne concerne que les utilisateurs de **Windows + WSL2**. Sous Linux natif ou macOS, l'adaptateur apparaît directement (typiquement `/dev/ttyUSB0` ou `/dev/ttyACM0`) - passez à la section suivante.*
 
 WSL2 ne voit pas les périphériques USB de Windows par défaut. Il faut les y attacher avec [`usbipd-win`](https://github.com/dorssel/usbipd-win).
 
@@ -373,7 +375,7 @@ La configuration ESPHome a besoin de l'**adresse MAC BLE de votre sonde** (pour 
 
 > **Ne confondez pas** le MAC de la sonde avec celui de l'ESP. Dans les logs, la ligne `esp32_ble: → MAC address:` correspond au **BLE de la passerelle elle-même**, pas à la sonde. La sonde apparaît dans les lignes du **client BLE** ou du **tracker**.
 
-### Méthode 1 — via les logs du proxy (recommandée)
+### Méthode 1 - via les logs du proxy (recommandée)
 
 Une fois le proxy flashé et fonctionnel, lancez les logs et observez les connexions BLE. Lorsque `ha-flipr-local` interroge la sonde, vous verrez une ligne de connexion `esp32_ble_client` mentionnant son adresse :
 
@@ -384,11 +386,11 @@ Une fois le proxy flashé et fonctionnel, lancez les logs et observez les connex
 
 Ici, `EE:5E:72:B5:0D:74` est l'adresse de la sonde. (La vôtre sera différente, forcément.)
 
-### Méthode 2 — via une application de scan BLE
+### Méthode 2 - via une application de scan BLE
 
 Avec **nRF Connect** (Android/iOS) ou un outil équivalent, scannez à proximité de la sonde. Repérez le périphérique nommé « Flipr… » ou portant un identifiant CTAC, et relevez son adresse MAC.
 
-### Méthode 3 — via Home Assistant
+### Méthode 3 - via Home Assistant
 
 Si l'intégration `ha-flipr-local` est déjà configurée, l'adresse de la sonde peut figurer dans les informations de l'appareil (Paramètres → Appareils et services → appareil Flipr) ou en attribut d'une de ses entités (Outils de développement → États).
 
@@ -412,12 +414,12 @@ Configuration complète et autonome. Remplacez les valeurs entre crochets. La LE
 ### Schéma de couleurs
 
 | Couleur | État | Priorité |
-|------------------------|-----------------------------------------------|----------|
+| --- | --- | --- |
 | Rouge fixe | WiFi déconnecté | 1 (max) |
 | Orange fixe | WiFi OK, API Home Assistant injoignable | 2 |
 | Violet fixe | Sonde non entendue depuis > 150 min | 3 |
-| Vert tamisé | Tout nominal | 4 (repos)|
-| Pulse bleu bref | Battement de vie (toutes les 5 min si nominal)| — |
+| Vert tamisé | Tout nominal | 4 (repos) |
+| Pulse bleu bref | Battement de vie (toutes les 5 min si nominal) | - |
 
 Bouton : **appui court** = flash de diagnostic (+ refresh Flipr via HA) ; **appui long (3 s)** = bascule mode nuit (LED éteinte, persistant au reboot).
 

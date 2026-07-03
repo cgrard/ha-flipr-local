@@ -19,6 +19,7 @@ Cette intégration a besoin d'une bonne couverture Bluetooth. Les piscines sont 
 
 * **Guide complet :** [README.md](README.md)
 * **Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome :** [docs/esphome-proxy.md](docs/esphome-proxy.md)
+* **Proxy Bluetooth ESPHome sur ESP32 neuf (dédié Flipr) :** [docs/esphome-proxy-esp32.md](docs/esphome-proxy-esp32.md)
 
 ---
 *Développé par un passionné, pour la communauté.*

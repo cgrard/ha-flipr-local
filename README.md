@@ -32,7 +32,7 @@
 </p>
 
 <p align="center">
-  <em> Vue d’ensemble des données de la piscine dans Home Assistant</em>
+  <em>Vue d’ensemble des données de la piscine dans Home Assistant</em>
 </p>
 
 ---
@@ -45,12 +45,12 @@
 </p>
 
 <p align="center">
-  <em> Entités exposées par l’intégration & Options de Configuration avancées</em>
+  <em>Entités exposées par l’intégration & Options de Configuration avancées</em>
 </p>
 
 ---
 
-Une **intégration 100% locale pour Home Assistant** qui transforme votre analyseur Flipr en capteur Bluetooth Low Energy (BLE), afin de piloter et surveiller votre piscine sans aucune dépendance au Cloud.
+Une **intégration 100% locale pour Home Assistant** qui lit votre analyseur Flipr directement en Bluetooth Low Energy (BLE) et l'expose comme capteurs Home Assistant, afin de piloter et surveiller votre piscine sans aucune dépendance au Cloud.
 
 > **Avertissement** : Cette intégration interroge le Flipr directement en Bluetooth. Si vous utilisez la passerelle Wi-Fi officielle en parallèle, une gestion rigoureuse des modes de synchronisation est intégrée pour préserver la batterie.
 
@@ -63,14 +63,14 @@ Flipr Local permet de remplacer le cloud par une solution de **local control**, 
 
 ### Compatibilité
 
-* **Modèles supportés** : Flipr AnalysR (Toutes versions Bluetooth - avec ou sans abonnement).
+* **Modèles supportés** : Flipr AnalysR toutes générations, y compris les anciennes « ère Sigfox » (elles communiquent aussi en Bluetooth), avec ou sans abonnement.
 * **Usage flexible** : Compatible avec ou sans la passerelle Wi-Fi Flipr Connect.
 * **Testé sur** : Validé sur **Flipr AnalysR 3** et **Flipr Start Max**.
-* **Matériel requis** : Bluetooth interne, clé USB Bluetooth ou **Bluetooth Proxy ESPHome** (Fortement recommandé, [installation facile ici](https://esphome.github.io/bluetooth-proxies/)).
+* **Matériel requis** : Bluetooth interne, clé USB Bluetooth ou **Bluetooth Proxy ESPHome** (fortement recommandé). Voir la [config de référence dédiée au Flipr](docs/esphome-proxy-esp32.md), ou le [proxy ESPHome standard](https://esphome.github.io/bluetooth-proxies/).
 * **Qualité du signal** : Un signal **RSSI stable (idéalement supérieur à -75 dBm)** est indispensable pour garantir la connexion au Flipr. Les tests montrent qu'un signal inférieur à **-80 dBm** peut entraîner des échecs fréquents.
-* ⏱ **Temps réel** : Une entité `sensor.*_signal_bluetooth`, utilisant l'écoute passive de Home Assistant, vous permet de surveiller la force du signal en temps réel sans vider la batterie de la sonde !
+* **Temps réel** : Une entité `sensor.*_signal_bluetooth`, utilisant l'écoute passive de Home Assistant, vous permet de surveiller la force du signal en temps réel sans vider la batterie de la sonde !
 
-> **Non compatible** : Les versions fonctionnant uniquement via le réseau Sigfox ne sont pas supportées.
+> **Anciennes générations (ère Sigfox) : supportées.** Ces sondes communiquent aussi en Bluetooth (c'est la voie utilisée par l'application), donc l'intégration les lit tel quel. Il suffit d'abandonner la passerelle Sigfox, de toute façon devenue inutile (réseau en fin de vie), et de lire la sonde via un proxy Bluetooth. Seuls les coefficients de conversion pH et température diffèrent, corrigés par la calibration 2 points (voir [docs/calibration.md](docs/calibration.md)). Seule vraie contrainte : le Bluetooth de ces sondes est faible, placez le proxy au plus près du bassin (voir [docs/esphome-proxy-esp32.md](docs/esphome-proxy-esp32.md)).
 
 ---
 
@@ -89,7 +89,7 @@ Flipr Local permet de remplacer le cloud par une solution de **local control**, 
 * **Configuration 100% UI** : Découverte automatique Bluetooth, calibrage des sondes et réglage des seuils d'alerte directement depuis l'interface Home Assistant (aucun YAML requis).
 * **Modes de Synchronisation** : Contrôle du mode de synchronisation (Sommeil, Éco, Normal, Boost) pour les utilisateurs possédant la passerelle Wi-Fi, afin d'éviter de vider la batterie.
 * **Multi-langue** : Développé en Français et disponible en EN, ES, DE, IT, NL, PL, PT, PT-BR, SV, RU, ZH-HANS, ZH-HANT, CS, HU, EL, HR, DA, NB (Traduction via IA).
-* Transforme votre Flipr en véritable **BLE sensor** pour Home Assistant
+* Expose votre Flipr comme capteurs Home Assistant, lus en direct en Bluetooth (BLE)
 
 ---
 
@@ -137,9 +137,9 @@ L'intégration cohabite parfaitement avec votre installation officielle :
 | **Signal RSSI** | dBm | Force du signal Bluetooth reçu en temps réel. |
 | **État Bluetooth** | Statut | État détaillé de la connexion (Connecté, En veille, Erreur...). |
 | **Mode Sync** | Diagnostic | Mode actuel de la sonde lu dans la trame Bluetooth (Éco, Boost...). |
-| ⏱ **Prochaine Analyse** | Horodatage | Heure estimée de la prochaine relève de données. |
+| **Prochaine Analyse** | Horodatage | Heure estimée de la prochaine relève de données. |
 | **Nouvelle Analyse** | Bouton | **Lancer une analyse instantanée (~60s).** |
-| ⏸ **Analyses Auto.** | Interrupteur | Activer/Désactiver la relève automatique (Mode Pause). |
+| **Analyses Auto.** | Interrupteur | Activer/Désactiver la relève automatique (Mode Pause). |
 
 > **Diagnostic** : L'intégration expose également des capteurs avancés (pH brut en mV, pH formule usine d'origine, trame hexadécimale brute complète, et statuts d'alertes binaires).
 
@@ -228,6 +228,8 @@ Retirez les anciennes sondes, nettoyez la base blanche. Branchez les adaptateurs
 </details>
 
 > **Recyclez la passerelle WiFi** : plutôt que d'acheter un ESP32 dédié, vous pouvez reflasher la passerelle WiFi Flipr devenue inutile en proxy Bluetooth ESPHome. Voir le guide complet de reverse engineering : [Recycler la passerelle WiFi Flipr en proxy Bluetooth ESPHome](docs/esphome-proxy.md).
+>
+> **Vous partez d'un ESP32 neuf** (par exemple pour remplacer une ancienne passerelle Sigfox) ? Voir la [config de référence pour proxy Bluetooth dédié sur ESP32](docs/esphome-proxy-esp32.md).
 
 ---
 
