@@ -87,11 +87,11 @@ esp32_ble_tracker:
     active: true
 ```
 
-## Home Assistant 2026.7 : forcer le mode de scan sur Active
+## Home Assistant ne lit plus la sonde alors que le proxy va bien (bug HA)
 
-Depuis Home Assistant 2026.6, le mode de scan par défaut d'un proxy Bluetooth est **« Auto »**. En 2026.7.1 (`habluetooth 6.26.2`), ce mode Auto est cassé avec les proxies ESPHome : `ha-flipr-local` tombe en `out_of_range`, le signal passe `unavailable`, et le scanner côté HA reste bloqué en `current_mode: null` (avertissement « Bluetooth scanner has gone quiet »), alors que le proxy forwarde pourtant bien toutes les annonces BLE. C'est une régression côté Home Assistant (`habluetooth` passé de 6.8.3 à 6.26.2 dans ce patch), pas un souci de firmware.
+Symptôme : `ha-flipr-local` tombe en `out_of_range`, le signal passe `unavailable`, le scanner côté HA reste `current_mode: null` / `discovered_devices: []` (« Bluetooth scanner has gone quiet »), alors que le proxy scanne et **forwarde pourtant bien toutes ses annonces BLE**. Le problème est **côté Home Assistant**, qui cesse de consommer les annonces reçues.
 
-Parade, sans downgrader Home Assistant : Paramètres → Appareils et services → intégration **ESPHome** → votre proxy → **Configurer** → **Mode de scan Bluetooth** → **Active**, puis **redémarrer le proxy** pour que le nouveau mode s'applique réellement (le mode Active seul, sans reconnexion de l'ESP, ne suffit pas). Gardez-le sur **Active** tant que HA n'a pas corrigé le mode Auto.
+C'est un bug HA suivi en amont : [home-assistant/core#175664](https://github.com/home-assistant/core/issues/175664). Il est **intermittent** : une reconnexion de l'ESP (reboot / coupure secteur) rétablit parfois la consommation, parfois non ; recharger les intégrations, redémarrer HA, voire downgrader HA n'ont pas débloqué de façon fiable. En particulier, **changer le mode de scan (Auto / Active / Passif) n'est pas un remède fiable**, et l'état cassé se reproduit aussi sur des versions HA antérieures (donc pas une simple régression de version). En attendant le correctif amont : faire reconnecter l'ESP jusqu'à ce que HA re-consomme, et surveiller que `derniere_analyse` reparte.
 
 ## Placement et portée : le facteur dominant
 

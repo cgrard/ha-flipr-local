@@ -167,21 +167,18 @@ Pourquoi une fenêtre aussi longue (1000 ms) et pas les défauts ESPHome (`inter
 
 Ceinture et bretelles : ajoutez un bouton `restart` (déjà dans le YAML plus bas) et une automation qui redémarre le proxy si plus aucune analyse ne remonte, voir [Automatisation Home Assistant](#automatisation-home-assistant). Même si la pile BLE se refige un jour, le proxy se relève seul, sans débranchage manuel.
 
-### 5. Home Assistant 2026.7 casse le proxy avec son mode de scan « Auto »
+### 5. Home Assistant ne lit plus la sonde alors que le proxy va bien (bug HA)
 
-Piège récent et déroutant, car il n'a rien à voir avec le matériel. Après une mise à jour de Home Assistant en 2026.7.x, `ha-flipr-local` tombe en `out_of_range`, le signal Bluetooth passe `unavailable`, et le diagnostic du scanner côté HA affiche `current_mode: null` avec l'avertissement « Bluetooth scanner has gone quiet ». Symptôme trompeur : le proxy va parfaitement bien (WiFi OK, LED verte) et **forwarde bien toutes les annonces BLE** (vérifiable en logs, voir la note de debug de la config), mais Home Assistant ne les consomme plus.
+Piège déroutant, car il n'a rien à voir avec le matériel. `ha-flipr-local` tombe en `out_of_range`, le signal Bluetooth passe `unavailable`, et le diagnostic du scanner côté HA affiche `current_mode: null`, `discovered_devices: []`, avec l'avertissement « Bluetooth scanner has gone quiet ». Pourtant le proxy va parfaitement bien (WiFi OK, LED verte) et **forwarde bien toutes ses annonces BLE** à Home Assistant. Le problème est **côté Home Assistant, qui cesse de consommer les annonces reçues** et ne les route plus jusqu'au scanner.
 
-Cause : depuis la 2026.6, le mode de scan par défaut des proxies Bluetooth est **« Auto »** (écoute passive avec fenêtres actives à la demande, piloté par `habluetooth`). En 2026.7.1 (`habluetooth 6.26.2`), ce mode Auto est cassé avec les proxies ESPHome : le scanner distant s'enregistre mais ne route plus les annonces reçues au reste de la pile. Ce n'est pas un souci d'ESPHome ni de firmware (le proxy émet bien ses `BluetoothLERawAdvertisementsResponse`), c'est une régression côté Home Assistant (`habluetooth` a sauté de 6.8.3 à 6.26.2 dans ce patch).
+C'est un bug Home Assistant, suivi en amont : voir [home-assistant/core#175664](https://github.com/home-assistant/core/issues/175664). Ce qui a été constaté :
 
-Parade, sans downgrader Home Assistant : forcer le mode de scan du proxy sur **Active**.
+- **Ce n'est ni votre proxy ni votre firmware.** L'ESP émet bien ses `BluetoothLERawAdvertisementsResponse` (prouvable en direct, voir la note « Diagnostic à chaud » après le YAML de config) ; c'est HA qui ne les délivre pas au scanner.
+- **C'est intermittent (flaky).** Une reconnexion de l'ESP (reboot ou reflash) rétablit parfois la consommation côté HA, parfois non. Recharger les intégrations `esphome`/`bluetooth`, redémarrer HA, et même downgrader HA n'ont **pas** débloqué de façon fiable.
+- **Ce n'est pas fiablement corrigeable depuis la config.** En particulier, changer le mode de scan (Auto / Active / Passif) n'est **pas** un remède fiable. L'état cassé se reproduit aussi sur des versions HA antérieures une fois installé, donc ce n'est pas une simple régression de version.
+- **En attendant le correctif amont** : faire reconnecter l'ESP (bouton `restart` ou coupure secteur) jusqu'à ce que HA re-consomme, et surveiller que `derniere_analyse` recommence à avancer. Le watchdog du piège n°4 (redémarrage auto sur données figées) aide aussi ici.
 
-1. Paramètres → Appareils et services → intégration **ESPHome** → votre proxy → **Configurer**.
-2. **Mode de scan Bluetooth** → **Active** → Valider.
-3. **Redémarrer le proxy** (bouton `restart`, ou coupure d'alimentation) pour que le nouveau mode s'applique réellement : le mode Active seul, sans reconnexion de l'ESP, ne suffit pas à débloquer.
-
-Le signal revient (une valeur en dBm au lieu de `unavailable`), la lecture GATT repart, `derniere_analyse` se remet à jour. Gardez le mode sur **Active** tant que Home Assistant n'a pas corrigé le mode Auto.
-
-Ne pas confondre avec le piège n°4 : le n°4 est un gel BLE **côté ESP** (un redémarrage physique le débloque, ça se reproduit après un jour ou deux) ; le n°5 est **côté Home Assistant** (ça casse pile au moment de la mise à jour HA, le proxy est sain, et seul le passage en mode Active corrige).
+Ne pas confondre avec le piège n°4 : le n°4 est un gel BLE **côté ESP** (l'ESP cesse de scanner ; un redémarrage physique le débloque, ça revient après un jour ou deux) ; le n°5 est **côté Home Assistant** (le proxy scanne et forwarde très bien, c'est HA qui ne consomme pas).
 
 ---
 
@@ -446,6 +443,12 @@ esphome:
   name: flipr-proxy
   friendly_name: Flipr BLE Proxy
   on_boot:
+    # Très tôt : ramener le logger global au calme (INFO). Le 'level: VERY_VERBOSE' du
+    # logger n'est qu'un plafond compilé pour permettre le bouton diag à chaud.
+    - priority: 700
+      then:
+        - logger.set_level:
+            level: INFO
     - priority: -100
       then:
         - script.execute: update_led
@@ -459,23 +462,18 @@ esp32:
 
 logger:
   hardware_uart: UART0
-  # --- Diagnostic BLE ponctuel (décommenter, reflasher, puis retirer après) ---
-  # Pour observer le flux d'annonces forwardées vers HA (utile pour distinguer un
-  # souci côté ESP d'un souci côté Home Assistant, cf. piège n°5). NE JAMAIS mettre
-  # esp32_ble_tracker / bluetooth_proxy en VERBOSE+ sur ce C6 mono-cœur : logger
-  # depuis l'ISR BLE plante (fault "instruction-misaligned", rollback OTA constaté).
-  # Ce qui est utile ET sûr, c'est api.service (le flux de messages API).
-  # level: VERY_VERBOSE
-  # logs:
-  #   esp32_ble: INFO
-  #   esp32_ble_tracker: INFO
-  #   esp32_ble_client: INFO
-  #   bluetooth_proxy: INFO
-  #   scheduler: INFO
-  #   component: INFO
-  #   wifi: INFO
-  #   api.connection: VERBOSE
-  #   api.service: VERY_VERBOSE   # <- les BluetoothLERawAdvertisementsResponse
+  # 'level' compilé à VERY_VERBOSE : c'est un PLAFOND qui permet de monter api.service
+  # à chaud via le bouton "Diag verbose ON" (voir button:), pour observer le flux
+  # d'annonces forwardées vers HA sans reflasher. On retombe au calme au boot
+  # (on_boot -> logger.set_level INFO), donc aucun flood en fonctionnement normal.
+  # La couche BLE est verrouillée à INFO ci-dessous : ne JAMAIS la monter en VERBOSE+
+  # sur ce C6 mono-cœur (log depuis l'ISR BLE = crash "instruction-misaligned", rollback OTA).
+  level: VERY_VERBOSE
+  logs:
+    esp32_ble: INFO
+    esp32_ble_tracker: INFO
+    esp32_ble_client: INFO
+    bluetooth_proxy: INFO
 
 api:
   encryption:
@@ -513,6 +511,21 @@ captive_portal:
 button:
   - platform: restart
     name: "Restart"
+  # Diagnostic à chaud (sans reflash) : monte SEULEMENT api.service en VERY_VERBOSE pour
+  # voir les BluetoothLERawAdvertisementsResponse (annonces forwardées vers HA). Ne touche
+  # PAS la couche BLE (verrouillée INFO). Presser OFF après usage pour ne pas flooder l'UART.
+  - platform: template
+    name: "Diag verbose ON"
+    on_press:
+      - logger.set_level:
+          tag: api.service
+          level: VERY_VERBOSE
+  - platform: template
+    name: "Diag verbose OFF"
+    on_press:
+      - logger.set_level:
+          tag: api.service
+          level: INFO
 
 globals:
   - id: wifi_connected
@@ -666,7 +679,7 @@ interval:
 
 > **Note de debug.** Lancer `esphome logs` en réseau ouvre une **seconde** connexion API sur l'ESP (Home Assistant garde la sienne, la limite est à 5 connexions). Grâce au compteur `api_clients`, la LED **reste verte** tant que Home Assistant reste connecté ; elle ne repasse orange que si plus aucun client n'est connecté. Une version antérieure de ce guide basculait `ha_connected` à `false` dès qu'un client se déconnectait, ce qui faisait virer la LED en orange à tort au moment où l'on quittait `esphome logs`.
 >
-> Pour observer en direct ce que le proxy envoie à Home Assistant (par exemple pour diagnostiquer le piège n°5), décommentez le bloc `logger` de diagnostic de la config et reflashez : `api.service` en `VERY_VERBOSE` fait apparaître les `send_message bluetooth_le_raw_advertisements_response`. Ne montez jamais `esp32_ble_tracker` / `bluetooth_proxy` en `VERBOSE`+ sur ce C6 : logger depuis l'ISR BLE le fait planter.
+> **Diagnostic à chaud (bug HA, piège n°5).** Pour confirmer que le proxy forwarde bien ses annonces (donc que le blocage est côté HA), pressez le bouton **Diag verbose ON** dans Home Assistant, puis lancez `esphome logs` : vous verrez défiler des `send_message bluetooth_le_raw_advertisements_response`, preuve que l'ESP émet bien vers HA. Pressez **Diag verbose OFF** ensuite. Cette bascule ne monte que `api.service` (jamais `esp32_ble_tracker` / `bluetooth_proxy`, qui planteraient le C6 depuis l'ISR BLE), et ne nécessite aucun reflash.
 
 ---
 
