@@ -167,6 +167,22 @@ Pourquoi une fenêtre aussi longue (1000 ms) et pas les défauts ESPHome (`inter
 
 Ceinture et bretelles : ajoutez un bouton `restart` (déjà dans le YAML plus bas) et une automation qui redémarre le proxy si plus aucune analyse ne remonte, voir [Automatisation Home Assistant](#automatisation-home-assistant). Même si la pile BLE se refige un jour, le proxy se relève seul, sans débranchage manuel.
 
+### 5. Home Assistant 2026.7 casse le proxy avec son mode de scan « Auto »
+
+Piège récent et déroutant, car il n'a rien à voir avec le matériel. Après une mise à jour de Home Assistant en 2026.7.x, `ha-flipr-local` tombe en `out_of_range`, le signal Bluetooth passe `unavailable`, et le diagnostic du scanner côté HA affiche `current_mode: null` avec l'avertissement « Bluetooth scanner has gone quiet ». Symptôme trompeur : le proxy va parfaitement bien (WiFi OK, LED verte) et **forwarde bien toutes les annonces BLE** (vérifiable en logs, voir la note de debug de la config), mais Home Assistant ne les consomme plus.
+
+Cause : depuis la 2026.6, le mode de scan par défaut des proxies Bluetooth est **« Auto »** (écoute passive avec fenêtres actives à la demande, piloté par `habluetooth`). En 2026.7.1 (`habluetooth 6.26.2`), ce mode Auto est cassé avec les proxies ESPHome : le scanner distant s'enregistre mais ne route plus les annonces reçues au reste de la pile. Ce n'est pas un souci d'ESPHome ni de firmware (le proxy émet bien ses `BluetoothLERawAdvertisementsResponse`), c'est une régression côté Home Assistant (`habluetooth` a sauté de 6.8.3 à 6.26.2 dans ce patch).
+
+Parade, sans downgrader Home Assistant : forcer le mode de scan du proxy sur **Active**.
+
+1. Paramètres → Appareils et services → intégration **ESPHome** → votre proxy → **Configurer**.
+2. **Mode de scan Bluetooth** → **Active** → Valider.
+3. **Redémarrer le proxy** (bouton `restart`, ou coupure d'alimentation) pour que le nouveau mode s'applique réellement : le mode Active seul, sans reconnexion de l'ESP, ne suffit pas à débloquer.
+
+Le signal revient (une valeur en dBm au lieu de `unavailable`), la lecture GATT repart, `derniere_analyse` se remet à jour. Gardez le mode sur **Active** tant que Home Assistant n'a pas corrigé le mode Auto.
+
+Ne pas confondre avec le piège n°4 : le n°4 est un gel BLE **côté ESP** (un redémarrage physique le débloque, ça se reproduit après un jour ou deux) ; le n°5 est **côté Home Assistant** (ça casse pile au moment de la mise à jour HA, le proxy est sain, et seul le passage en mode Active corrige).
+
 ---
 
 ## Brochage du connecteur K2
@@ -416,7 +432,7 @@ Configuration complète et autonome. Remplacez les valeurs entre crochets. La LE
 | Couleur | État | Priorité |
 | --- | --- | --- |
 | Rouge fixe | WiFi déconnecté | 1 (max) |
-| Orange fixe | WiFi OK, API Home Assistant injoignable | 2 |
+| Orange fixe | WiFi OK, aucun client API Home Assistant connecté | 2 |
 | Violet fixe | Sonde non entendue depuis > 150 min | 3 |
 | Vert tamisé | Tout nominal | 4 (repos) |
 | Pulse bleu bref | Battement de vie (toutes les 5 min si nominal) | - |
@@ -443,15 +459,34 @@ esp32:
 
 logger:
   hardware_uart: UART0
+  # --- Diagnostic BLE ponctuel (décommenter, reflasher, puis retirer après) ---
+  # Pour observer le flux d'annonces forwardées vers HA (utile pour distinguer un
+  # souci côté ESP d'un souci côté Home Assistant, cf. piège n°5). NE JAMAIS mettre
+  # esp32_ble_tracker / bluetooth_proxy en VERBOSE+ sur ce C6 mono-cœur : logger
+  # depuis l'ISR BLE plante (fault "instruction-misaligned", rollback OTA constaté).
+  # Ce qui est utile ET sûr, c'est api.service (le flux de messages API).
+  # level: VERY_VERBOSE
+  # logs:
+  #   esp32_ble: INFO
+  #   esp32_ble_tracker: INFO
+  #   esp32_ble_client: INFO
+  #   bluetooth_proxy: INFO
+  #   scheduler: INFO
+  #   component: INFO
+  #   wifi: INFO
+  #   api.connection: VERBOSE
+  #   api.service: VERY_VERBOSE   # <- les BluetoothLERawAdvertisementsResponse
 
 api:
   encryption:
     key: "[TA_CLE_API_BASE64]" # openssl rand -base64 32
   on_client_connected:
-    - lambda: 'id(ha_connected) = true;'
+    - lambda: 'id(api_clients) += 1;'
     - script.execute: update_led
   on_client_disconnected:
-    - lambda: 'id(ha_connected) = false;'
+    # Ne repasse "HA absent" que quand le DERNIER client se déconnecte (compteur),
+    # pas dès qu'un client secondaire (esphome logs) part alors que HA reste là.
+    - lambda: 'if (id(api_clients) > 0) id(api_clients) -= 1;'
     - script.execute: update_led
 
 ota:
@@ -484,10 +519,10 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  - id: ha_connected
-    type: bool
+  - id: api_clients # nb de clients API connectés (HA + éventuels esphome logs)
+    type: int
     restore_value: no
-    initial_value: 'false'
+    initial_value: '0'
   - id: last_sonde_seen # timestamp (millis) du dernier contact sonde
     type: uint32_t
     restore_value: no
@@ -582,8 +617,8 @@ script:
 
           if (!id(wifi_connected)) {
             r=1.0; g=0;   b=0;   bright=1.0;   // ROUGE : WiFi déconnecté
-          } else if (!id(ha_connected)) {
-            r=1.0; g=0.4; b=0;   bright=1.0;   // ORANGE : HA injoignable
+          } else if (id(api_clients) == 0) {
+            r=1.0; g=0.4; b=0;   bright=1.0;   // ORANGE : aucun client HA connecté
           } else if (!sonde_ok) {
             r=0.5; g=0;   b=1.0; bright=1.0;   // VIOLET : sonde perdue
           } else {
@@ -600,7 +635,7 @@ script:
       - if:
           condition:
             and:
-              - lambda: 'return id(wifi_connected) && id(ha_connected) && !id(led_off_mode);'
+              - lambda: 'return id(wifi_connected) && id(api_clients) > 0 && !id(led_off_mode);'
               - lambda: |-
                   return (id(last_sonde_seen) != 0) &&
                          ((millis() - id(last_sonde_seen)) < 9000000UL);
@@ -629,7 +664,9 @@ interval:
       - script.execute: heartbeat_pulse
 ```
 
-> **Note de debug.** Lancer `esphome logs` en réseau occupe la connexion API de l'ESP : Home Assistant est alors temporairement évincé et la LED passe **orange**. C'est normal, rechargez l'intégration ESPHome (ou attendez la reconnexion) pour revenir au vert.
+> **Note de debug.** Lancer `esphome logs` en réseau ouvre une **seconde** connexion API sur l'ESP (Home Assistant garde la sienne, la limite est à 5 connexions). Grâce au compteur `api_clients`, la LED **reste verte** tant que Home Assistant reste connecté ; elle ne repasse orange que si plus aucun client n'est connecté. Une version antérieure de ce guide basculait `ha_connected` à `false` dès qu'un client se déconnectait, ce qui faisait virer la LED en orange à tort au moment où l'on quittait `esphome logs`.
+>
+> Pour observer en direct ce que le proxy envoie à Home Assistant (par exemple pour diagnostiquer le piège n°5), décommentez le bloc `logger` de diagnostic de la config et reflashez : `api.service` en `VERY_VERBOSE` fait apparaître les `send_message bluetooth_le_raw_advertisements_response`. Ne montez jamais `esp32_ble_tracker` / `bluetooth_proxy` en `VERBOSE`+ sur ce C6 : logger depuis l'ISR BLE le fait planter.
 
 ---
 

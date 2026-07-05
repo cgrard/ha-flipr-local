@@ -87,6 +87,12 @@ esp32_ble_tracker:
     active: true
 ```
 
+## Home Assistant 2026.7 : forcer le mode de scan sur Active
+
+Depuis Home Assistant 2026.6, le mode de scan par défaut d'un proxy Bluetooth est **« Auto »**. En 2026.7.1 (`habluetooth 6.26.2`), ce mode Auto est cassé avec les proxies ESPHome : `ha-flipr-local` tombe en `out_of_range`, le signal passe `unavailable`, et le scanner côté HA reste bloqué en `current_mode: null` (avertissement « Bluetooth scanner has gone quiet »), alors que le proxy forwarde pourtant bien toutes les annonces BLE. C'est une régression côté Home Assistant (`habluetooth` passé de 6.8.3 à 6.26.2 dans ce patch), pas un souci de firmware.
+
+Parade, sans downgrader Home Assistant : Paramètres → Appareils et services → intégration **ESPHome** → votre proxy → **Configurer** → **Mode de scan Bluetooth** → **Active**, puis **redémarrer le proxy** pour que le nouveau mode s'applique réellement (le mode Active seul, sans reconnexion de l'ESP, ne suffit pas). Gardez-le sur **Active** tant que HA n'a pas corrigé le mode Auto.
+
 ## Placement et portée : le facteur dominant
 
 Aucun réglage firmware ne rattrape un signal trop faible. La radio BLE du Flipr est modeste, et la sonde flotte dans l'eau (le 2,4 GHz est fortement atténué par l'eau, et plus encore par une vitre). Retours d'utilisateurs sur les anciennes générations : lecture nickel **très près**, mais **zéro à 3-4 m derrière une vitre**.
