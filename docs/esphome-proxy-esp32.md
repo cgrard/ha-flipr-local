@@ -87,11 +87,13 @@ esp32_ble_tracker:
     active: true
 ```
 
-## Home Assistant ne lit plus la sonde alors que le proxy va bien (bug HA)
+## Home Assistant ne lit plus la sonde alors que le proxy va bien (bug HA, corrigé)
 
-Symptôme : `ha-flipr-local` tombe en `out_of_range`, le signal passe `unavailable`, le scanner côté HA reste `current_mode: null` / `discovered_devices: []` (« Bluetooth scanner has gone quiet »), alors que le proxy scanne et **forwarde pourtant bien toutes ses annonces BLE**. Le problème est **côté Home Assistant**, qui cesse de consommer les annonces reçues.
+Symptôme : `ha-flipr-local` tombe en `out_of_range`, le signal passe `unavailable`, le scanner côté HA reste `current_mode: null` / `discovered_devices: []` (« Bluetooth scanner has gone quiet »), alors que le proxy scanne et **forwarde pourtant bien toutes ses annonces BLE**. C'est HA qui ne les consomme plus.
 
-C'est un bug HA suivi en amont : [home-assistant/core#175664](https://github.com/home-assistant/core/issues/175664). Il est **intermittent** : une reconnexion de l'ESP (reboot / coupure secteur) rétablit parfois la consommation, parfois non ; recharger les intégrations, redémarrer HA, voire downgrader HA n'ont pas débloqué de façon fiable. En particulier, **changer le mode de scan (Auto / Active / Passif) n'est pas un remède fiable**, et l'état cassé se reproduit aussi sur des versions HA antérieures (donc pas une simple régression de version). En attendant le correctif amont : faire reconnecter l'ESP jusqu'à ce que HA re-consomme, et surveiller que `derniere_analyse` reparte.
+C'était un bug HA, **corrigé en amont** : [home-assistant/core#175664](https://github.com/home-assistant/core/issues/175664). Cause racine : une **souscription d'annonces périmée côté proxy**. À une reconnexion (ou un redémarrage / une mise à jour de HA), le proxy gardait la souscription de l'ancienne connexion et **rejetait le nouveau demandeur** ; l'ESP émettait alors vers une souscription morte et le scanner reconnecté ne recevait plus rien, la connexion API restant pourtant saine. D'où le symptôme « proxy actif mais plus rien, débloqué seulement en redémarrant l'ESP ».
+
+Le correctif est côté HA (`bleak-esphome` 3.9.7, livré dans **Home Assistant Core 2026.7.2**) et côté firmware (**ESPHome 2026.7.0**, [#17423](https://github.com/esphome/esphome/pull/17423)). **Il suffit de mettre Home Assistant à jour en 2026.7.2 ou plus récent** (sans reflasher le proxy) ; le reflash en ESPHome 2026.7.0 est un renfort optionnel. Un downgrade de HA ne protège pas.
 
 ## Placement et portée : le facteur dominant
 

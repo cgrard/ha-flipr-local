@@ -167,18 +167,18 @@ Pourquoi une fenêtre aussi longue (1000 ms) et pas les défauts ESPHome (`inter
 
 Ceinture et bretelles : ajoutez un bouton `restart` (déjà dans le YAML plus bas) et une automation qui redémarre le proxy si plus aucune analyse ne remonte, voir [Automatisation Home Assistant](#automatisation-home-assistant). Même si la pile BLE se refige un jour, le proxy se relève seul, sans débranchage manuel.
 
-### 5. Home Assistant ne lit plus la sonde alors que le proxy va bien (bug HA)
+### 5. Home Assistant ne lit plus la sonde alors que le proxy va bien (bug HA, corrigé)
 
-Piège déroutant, car il n'a rien à voir avec le matériel. `ha-flipr-local` tombe en `out_of_range`, le signal Bluetooth passe `unavailable`, et le diagnostic du scanner côté HA affiche `current_mode: null`, `discovered_devices: []`, avec l'avertissement « Bluetooth scanner has gone quiet ». Pourtant le proxy va parfaitement bien (WiFi OK, LED verte) et **forwarde bien toutes ses annonces BLE** à Home Assistant. Le problème est **côté Home Assistant, qui cesse de consommer les annonces reçues** et ne les route plus jusqu'au scanner.
+Piège déroutant, car il n'a rien à voir avec le matériel. `ha-flipr-local` tombe en `out_of_range`, le signal Bluetooth passe `unavailable`, et le diagnostic du scanner côté HA affiche `current_mode: null`, `discovered_devices: []`, avec l'avertissement « Bluetooth scanner has gone quiet ». Pourtant le proxy va parfaitement bien (WiFi OK, LED verte) et **forwarde bien toutes ses annonces BLE** à Home Assistant : c'est HA qui ne les consomme plus.
 
-C'est un bug Home Assistant, suivi en amont : voir [home-assistant/core#175664](https://github.com/home-assistant/core/issues/175664). Ce qui a été constaté :
+C'était un bug Home Assistant, **corrigé en amont** : [home-assistant/core#175664](https://github.com/home-assistant/core/issues/175664).
 
-- **Ce n'est ni votre proxy ni votre firmware.** L'ESP émet bien ses `BluetoothLERawAdvertisementsResponse` (prouvable en direct, voir la note « Diagnostic à chaud » après le YAML de config) ; c'est HA qui ne les délivre pas au scanner.
-- **C'est intermittent (flaky).** Une reconnexion de l'ESP (reboot ou reflash) rétablit parfois la consommation côté HA, parfois non. Recharger les intégrations `esphome`/`bluetooth`, redémarrer HA, et même downgrader HA n'ont **pas** débloqué de façon fiable.
-- **Ce n'est pas fiablement corrigeable depuis la config.** En particulier, changer le mode de scan (Auto / Active / Passif) n'est **pas** un remède fiable. L'état cassé se reproduit aussi sur des versions HA antérieures une fois installé, donc ce n'est pas une simple régression de version.
-- **En attendant le correctif amont** : faire reconnecter l'ESP (bouton `restart` ou coupure secteur) jusqu'à ce que HA re-consomme, et surveiller que `derniere_analyse` recommence à avancer. Le watchdog du piège n°4 (redémarrage auto sur données figées) aide aussi ici.
+- **Cause racine : une souscription d'annonces périmée côté proxy.** À une reconnexion (ou un redémarrage / une mise à jour de HA), le proxy conservait la souscription de l'ancienne connexion et **rejetait le nouveau demandeur** (le HA reconnecté). L'ESP continuait d'émettre vers une souscription morte, et le scanner reconnecté ne recevait plus aucune annonce, alors que la connexion API restait saine. D'où le symptôme « proxy actif mais plus rien, débloqué seulement en redémarrant l'ESP ».
+- **Ce n'était ni votre proxy, ni votre firmware, ni votre réseau.** L'ESP émettait bien ses `BluetoothLERawAdvertisementsResponse` (prouvable en direct, voir la note « Diagnostic à chaud » après le YAML de config), et la connexion API restait stable (pings OK, aucune reconnexion).
+- **Le correctif.** Côté HA : `bleak-esphome` **3.9.7** ajoute un watchdog qui récupère les souscriptions rejetées par une connexion proxy périmée, livré dans **Home Assistant Core 2026.7.2**. Côté firmware : **ESPHome 2026.7.0** ([#17423](https://github.com/esphome/esphome/pull/17423)) fait que le proxy laisse le nouveau demandeur prendre la main au lieu de le rejeter.
+- **Ce qu'il faut faire : mettre Home Assistant à jour en 2026.7.2 ou plus récent.** Le correctif côté HA suffit, sans reflasher le proxy ; le reflash en ESPHome 2026.7.0 est un renfort optionnel. Un downgrade de HA ne protège pas : le rejet de souscription est un comportement firmware que la reconnexion déclenche même sur les versions antérieures.
 
-Ne pas confondre avec le piège n°4 : le n°4 est un gel BLE **côté ESP** (l'ESP cesse de scanner ; un redémarrage physique le débloque, ça revient après un jour ou deux) ; le n°5 est **côté Home Assistant** (le proxy scanne et forwarde très bien, c'est HA qui ne consomme pas).
+Ne pas confondre avec le piège n°4 : le n°4 est un gel BLE **côté ESP** (l'ESP cesse de scanner ; un redémarrage physique le débloque, ça revient après un jour ou deux) ; le n°5 était **côté Home Assistant** (le proxy scanne et forwarde très bien, c'est HA qui ne consommait pas), et il est corrigé depuis HA 2026.7.2.
 
 ---
 
