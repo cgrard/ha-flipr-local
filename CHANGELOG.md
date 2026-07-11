@@ -5,6 +5,25 @@ Tous les changements notables de ce projet sont documentés dans ce fichier.
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [1.2.1] - 2026-07-11
+
+### Corrigé
+
+- Lecture de la sonde dès son retour en portée (après un redémarrage de Home Assistant ou une perte de signal) au lieu d'attendre le cycle d'interrogation suivant, qui pouvait laisser jusqu'à une heure sans mesure fraîche.
+- Le capteur RSSI temps réel repasse à `indisponible` à la perte de signal, au lieu de conserver la dernière valeur affichée.
+- `lsi_status` renvoie l'état « inconnu » standard de Home Assistant quand l'indice de Langelier n'est pas calculable, au lieu d'une valeur d'énumération réservée.
+- Validation des seuils ORP comparée en flottant : des bornes ORP non entières ne sont plus tronquées puis rejetées à tort.
+- Robustesse : `estimate_free_chlorine` gère les entrées manquantes, le coordinator se nettoie complètement à l'arrêt (plus de fuite de timer de rafraîchissement au rechargement de l'intégration), et le dépassement de la file de notifications BLE est réellement intercepté.
+
+### Modifié
+
+- `bleak` et `bleak-retry-connector` retirés des `requirements` du manifest : ils sont déjà fournis et épinglés par la dépendance `bluetooth` de Home Assistant. Évite tout risque de mise à niveau de la pile Bluetooth partagée par l'ensemble de Home Assistant.
+- Réorganisation interne du code : l'intégration, jusque-là concentrée dans un `__init__.py` de près de 1200 lignes, est découpée par responsabilité en modules (`coordinator`, `ble`, `parser`, `store`, `flow_schema`, `sensor_entities`, `helpers`) et la liste des capteurs devient une table déclarative. Aucun changement de comportement, meilleure lisibilité et maintenabilité.
+
+### Ajouté
+
+- Tests couvrant le rafraîchissement de rattrapage, la disponibilité du capteur RSSI, la table de specs des capteurs et le cycle de vie du drapeau de lecture.
+
 ## [1.2.0] - 2026-07-01
 
 ### Ajouté

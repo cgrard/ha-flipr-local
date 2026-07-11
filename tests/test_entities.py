@@ -82,7 +82,15 @@ _D = EntityCategory.DIAGNOSTIC
 # (device_class, unit, precision, category, icon, state_class, options) per FliprSensor.
 # Snapshot of what async_setup_entry builds; guards the declarative-table refactor.
 _EXPECTED_FLIPR_SENSORS = {
-    "temperature": (SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, 2, None, None, _M, None),
+    "temperature": (
+        SensorDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        2,
+        None,
+        None,
+        _M,
+        None,
+    ),
     "ph": (SensorDeviceClass.PH, None, 2, None, None, _M, None),
     "orp": (None, "mV", None, None, None, _M, None),
     DATA_ESTIMATED_FREE_CHLORINE: (None, "ppm", 2, None, "mdi:water-percent", _M, None),
@@ -90,14 +98,27 @@ _EXPECTED_FLIPR_SENSORS = {
     "target_equilibrium_ph": (SensorDeviceClass.PH, None, 2, _D, None, _M, None),
     "lsi": (None, None, 2, _D, None, _M, None),
     "lsi_status": (
-        SensorDeviceClass.ENUM, None, None, _D, None, None,
+        SensorDeviceClass.ENUM,
+        None,
+        None,
+        _D,
+        None,
+        None,
         ["corrosive", "balanced", "scaling"],
     ),
     "ph_raw": (None, "mV", None, _D, "mdi:lightning-bolt", _M, None),
     "factory_ph": (SensorDeviceClass.PH, None, 2, _D, "mdi:factory", _M, None),
     "battery_level": (SensorDeviceClass.BATTERY, "%", None, _D, None, _M, None),
     "battery": (None, "mV", None, _D, "mdi:battery-bluetooth", _M, None),
-    "last_received": (SensorDeviceClass.TIMESTAMP, None, None, _D, "mdi:clock-check", None, None),
+    "last_received": (
+        SensorDeviceClass.TIMESTAMP,
+        None,
+        None,
+        _D,
+        "mdi:clock-check",
+        None,
+        None,
+    ),
     "raw_frame": (None, None, None, _D, "mdi:bluetooth-transfer", None, None),
 }
 

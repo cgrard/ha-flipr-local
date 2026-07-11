@@ -456,5 +456,3 @@ class FliprDataCoordinator(
             self.retry_count = 0
 
         return self._data_or_fail(f"Flipr unreachable and no history: {error_msg}")
-
-

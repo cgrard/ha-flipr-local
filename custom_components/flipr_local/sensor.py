@@ -50,19 +50,70 @@ class _SensorSpec(NamedTuple):
 
 # The coordinator-driven sensors, in display order. Add or tweak one here.
 _SENSOR_SPECS: tuple[_SensorSpec, ...] = (
-    _SensorSpec("temperature", device_class=SensorDeviceClass.TEMPERATURE, unit=UnitOfTemperature.CELSIUS, precision=2, state_class=_M),
+    _SensorSpec(
+        "temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        unit=UnitOfTemperature.CELSIUS,
+        precision=2,
+        state_class=_M,
+    ),
     _SensorSpec("ph", device_class=SensorDeviceClass.PH, precision=2, state_class=_M),
     _SensorSpec("orp", unit="mV", state_class=_M),
-    _SensorSpec(DATA_ESTIMATED_FREE_CHLORINE, unit="ppm", precision=2, icon="mdi:water-percent", state_class=_M),
-    _SensorSpec(DATA_ACTIVE_CHLORINE_HOCL, unit="mg/L", precision=4, icon="mdi:molecule", state_class=_M),
-    _SensorSpec("target_equilibrium_ph", device_class=SensorDeviceClass.PH, precision=2, category=_D, state_class=_M),
+    _SensorSpec(
+        DATA_ESTIMATED_FREE_CHLORINE,
+        unit="ppm",
+        precision=2,
+        icon="mdi:water-percent",
+        state_class=_M,
+    ),
+    _SensorSpec(
+        DATA_ACTIVE_CHLORINE_HOCL,
+        unit="mg/L",
+        precision=4,
+        icon="mdi:molecule",
+        state_class=_M,
+    ),
+    _SensorSpec(
+        "target_equilibrium_ph",
+        device_class=SensorDeviceClass.PH,
+        precision=2,
+        category=_D,
+        state_class=_M,
+    ),
     _SensorSpec("lsi", precision=2, category=_D, state_class=_M),
-    _SensorSpec("lsi_status", device_class=SensorDeviceClass.ENUM, category=_D, options=["corrosive", "balanced", "scaling"]),
-    _SensorSpec("ph_raw", unit="mV", category=_D, icon="mdi:lightning-bolt", state_class=_M),
-    _SensorSpec("factory_ph", device_class=SensorDeviceClass.PH, precision=2, category=_D, icon="mdi:factory", state_class=_M),
-    _SensorSpec("battery_level", device_class=SensorDeviceClass.BATTERY, unit="%", category=_D, state_class=_M),
-    _SensorSpec("battery", unit="mV", category=_D, icon="mdi:battery-bluetooth", state_class=_M),
-    _SensorSpec("last_received", device_class=SensorDeviceClass.TIMESTAMP, category=_D, icon="mdi:clock-check"),
+    _SensorSpec(
+        "lsi_status",
+        device_class=SensorDeviceClass.ENUM,
+        category=_D,
+        options=["corrosive", "balanced", "scaling"],
+    ),
+    _SensorSpec(
+        "ph_raw", unit="mV", category=_D, icon="mdi:lightning-bolt", state_class=_M
+    ),
+    _SensorSpec(
+        "factory_ph",
+        device_class=SensorDeviceClass.PH,
+        precision=2,
+        category=_D,
+        icon="mdi:factory",
+        state_class=_M,
+    ),
+    _SensorSpec(
+        "battery_level",
+        device_class=SensorDeviceClass.BATTERY,
+        unit="%",
+        category=_D,
+        state_class=_M,
+    ),
+    _SensorSpec(
+        "battery", unit="mV", category=_D, icon="mdi:battery-bluetooth", state_class=_M
+    ),
+    _SensorSpec(
+        "last_received",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        category=_D,
+        icon="mdi:clock-check",
+    ),
     _SensorSpec("raw_frame", category=_D, icon="mdi:bluetooth-transfer"),
 )
 

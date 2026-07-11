@@ -210,7 +210,9 @@ async def test_save_and_restore_roundtrip(hass, monkeypatch):
         coordinator_mod, "async_register_callback", lambda *a, **k: lambda: None
     )
     monkeypatch.setattr(coordinator_mod, "async_scanner_count", lambda *a, **k: 0)
-    monkeypatch.setattr(coordinator_mod, "async_last_service_info", lambda *a, **k: None)
+    monkeypatch.setattr(
+        coordinator_mod, "async_last_service_info", lambda *a, **k: None
+    )
 
     entry = MockConfigEntry(
         domain=DOMAIN,

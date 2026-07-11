@@ -359,5 +359,3 @@ class FliprParseMixin:
         )
         self._schedule_save()
         return new_data
-
-
