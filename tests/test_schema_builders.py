@@ -2,7 +2,7 @@
 # Copyright (c) 2026 cgrard
 # This file is part of Flipr Local.
 
-from custom_components.flipr_local.config_flow import (
+from custom_components.flipr_local.flow_schema import (
     NUM_FIELDS,
     PROBE_FIELDS,
     THRESHOLD_FIELDS,
