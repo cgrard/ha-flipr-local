@@ -223,7 +223,7 @@ def validate_calibration(data: dict) -> dict | tuple[str, str]:
     for key_min, key_max, error_key, cast in (
         (CONF_PH_MIN, CONF_PH_MAX, "ph_threshold_error", float),
         (CONF_TEMP_MIN, CONF_TEMP_MAX, "temp_threshold_error", float),
-        (CONF_ORP_MIN, CONF_ORP_MAX, "orp_threshold_error", int),
+        (CONF_ORP_MIN, CONF_ORP_MAX, "orp_threshold_error", float),
     ):
         threshold_error = _check_min_max(data, key_min, key_max, error_key, cast)
         if threshold_error is not None:
