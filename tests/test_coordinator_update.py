@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.flipr_local import FliprDataCoordinator
-import custom_components.flipr_local as integration
+import custom_components.flipr_local.coordinator as coordinator_mod
 import custom_components.flipr_local.sensor as sensor_mod
 from custom_components.flipr_local.const import (
     BT_STATUS_ERROR_RETRY,
@@ -75,16 +75,16 @@ def _patch_ble(monkeypatch, client, device_name="F3A1"):
     async def _establish(*args, **kwargs):
         return client
 
-    monkeypatch.setattr(integration, "async_scanner_count", lambda *a, **k: 1)
+    monkeypatch.setattr(coordinator_mod, "async_scanner_count", lambda *a, **k: 1)
     monkeypatch.setattr(
-        integration,
+        coordinator_mod,
         "async_last_service_info",
         lambda *a, **k: SimpleNamespace(time=monotonic(), rssi=-60),
     )
     monkeypatch.setattr(
-        integration, "async_ble_device_from_address", lambda *a, **k: device
+        coordinator_mod, "async_ble_device_from_address", lambda *a, **k: device
     )
-    monkeypatch.setattr(integration, "establish_connection", _establish)
+    monkeypatch.setattr(coordinator_mod, "establish_connection", _establish)
 
 
 async def _make_coordinator(hass):
@@ -132,7 +132,7 @@ async def test_start_max_poll_cycle_returns_parsed_data(hass, monkeypatch):
     async def _instant_sleep(_seconds):
         return None
 
-    monkeypatch.setattr(integration.asyncio, "sleep", _instant_sleep)
+    monkeypatch.setattr(coordinator_mod.asyncio, "sleep", _instant_sleep)
 
     frame = _frame(ph_mv=1700, sync=1)
     client = FakeClient(frame)
@@ -180,7 +180,7 @@ async def test_write_timeout_triggers_retry(hass, monkeypatch):
     async def _instant_sleep(_seconds):
         return None
 
-    monkeypatch.setattr(integration.asyncio, "sleep", _instant_sleep)
+    monkeypatch.setattr(coordinator_mod.asyncio, "sleep", _instant_sleep)
 
     class TimeoutClient(FakeClient):
         async def write_gatt_char(self, char, data, response=False):
@@ -200,13 +200,13 @@ async def test_write_timeout_triggers_retry(hass, monkeypatch):
 async def test_save_and_restore_roundtrip(hass, monkeypatch):
     """Data saved to the Store is restored by a fresh coordinator."""
     monkeypatch.setattr(
-        integration, "async_track_unavailable", lambda *a, **k: lambda: None
+        coordinator_mod, "async_track_unavailable", lambda *a, **k: lambda: None
     )
     monkeypatch.setattr(
-        integration, "async_register_callback", lambda *a, **k: lambda: None
+        coordinator_mod, "async_register_callback", lambda *a, **k: lambda: None
     )
-    monkeypatch.setattr(integration, "async_scanner_count", lambda *a, **k: 0)
-    monkeypatch.setattr(integration, "async_last_service_info", lambda *a, **k: None)
+    monkeypatch.setattr(coordinator_mod, "async_scanner_count", lambda *a, **k: 0)
+    monkeypatch.setattr(coordinator_mod, "async_last_service_info", lambda *a, **k: None)
 
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -232,7 +232,7 @@ async def test_save_and_restore_roundtrip(hass, monkeypatch):
 
 def _stub_ble_callbacks(monkeypatch):
     """Neutralise the bluetooth helpers used during entry setup/initialize."""
-    for mod in (integration, sensor_mod):
+    for mod in (coordinator_mod, sensor_mod):
         monkeypatch.setattr(
             mod, "async_register_callback", lambda *a, **k: lambda: None, raising=False
         )
@@ -243,7 +243,7 @@ def _stub_ble_callbacks(monkeypatch):
             mod, "async_scanner_count", lambda *a, **k: 0, raising=False
         )
     monkeypatch.setattr(
-        integration, "async_track_unavailable", lambda *a, **k: lambda: None
+        coordinator_mod, "async_track_unavailable", lambda *a, **k: lambda: None
     )
 
 
