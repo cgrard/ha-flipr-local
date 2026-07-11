@@ -158,6 +158,11 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         self._save_cancel: asyncio.TimerHandle | None = None
         self._force_one_shot: bool = False
         self._is_shutdown: bool = False
+        # True while we still owe a fresh read: at startup, and after every
+        # out_of_range. Consumed by _on_ble_seen to kick a one-shot catch-up
+        # refresh as soon as the sensor is back in range, instead of waiting
+        # for the next (long) update_interval tick. Cleared on a successful read.
+        self._needs_fresh_read: bool = True
 
         self._ble_available: bool = True
         self._ble_unavail_cancel: CALLBACK_TYPE | None = None
@@ -250,6 +255,20 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                     self.safe_mac,
                 )
             self._set_bt_status(BT_STATUS_WAITING)
+
+        # The coordinator only reads on its (long) update_interval. After a
+        # restart, or after recovering from out_of_range, that would leave the
+        # pool without a fresh read for up to a full interval. Kick a one-shot
+        # refresh the moment the sensor is back in range so recovery is
+        # immediate instead of waiting for the next tick. async_request_refresh
+        # is debounced, and the flag guarantees a single request per gap.
+        if active and self._needs_fresh_read and not self._is_shutdown:
+            self._needs_fresh_read = False
+            _LOGGER.debug(
+                "Flipr %s: sensor back in range, requesting catch-up refresh",
+                self.safe_mac,
+            )
+            self.hass.async_create_task(self.async_request_refresh())
 
     async def async_initialize(self) -> None:
         saved_data = await self.store.async_load()
@@ -594,6 +613,9 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
         self.retry_count = 0
         self._cancel_pending_retry()
+        # Owe a fresh read again: _on_ble_seen will trigger it as soon as the
+        # sensor reappears, rather than waiting for the next update_interval.
+        self._needs_fresh_read = True
         return self._data_or_fail(message)
 
     def _select_command(self, entry: ConfigEntry) -> tuple[str, int, str]:
@@ -1053,6 +1075,8 @@ class FliprDataCoordinator(DataUpdateCoordinator):
             return result
 
         self.retry_count = 0
+        # GATT exchange succeeded: we no longer owe a catch-up read.
+        self._needs_fresh_read = False
         return self._assemble_new_data(result, current_entry, cmd_type)
 
     def _handle_ble_error(
@@ -1161,15 +1185,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    if not coordinator.data.get("ph_raw"):
-        _LOGGER.debug("No history found, launching initial analysis.")
-        entry.async_create_background_task(
-            hass,
-            coordinator.async_request_refresh(),
-            "flipr_initial_refresh",
-        )
+    if coordinator.data.get("ph_raw"):
+        _LOGGER.debug("History restored from disk; refreshing for current data.")
     else:
-        _LOGGER.debug("History found on disk, restoring state.")
+        _LOGGER.debug("No history found, launching initial analysis.")
+    # Always trigger an initial read after (re)start. Restored history gives an
+    # instant display, but without this the coordinator would otherwise wait a
+    # full update_interval before its first live read. If Bluetooth is not ready
+    # yet, this goes out_of_range and _on_ble_seen retries once the sensor is up.
+    entry.async_create_background_task(
+        hass,
+        coordinator.async_request_refresh(),
+        "flipr_initial_refresh",
+    )
 
     return True
 

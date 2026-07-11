@@ -315,3 +315,70 @@ async def test_setup_and_unload_entry(hass, monkeypatch):
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
+
+
+async def test_ble_seen_requests_catch_up_refresh(hass, monkeypatch):
+    """When a fresh read is owed, seeing the sensor kicks a one-shot refresh.
+
+    Regression guard: after a restart the coordinator would otherwise sit idle
+    until its next (long) update_interval tick instead of reading right away.
+    """
+    coordinator = await _make_coordinator(hass)
+
+    calls = []
+
+    async def _fake_refresh():
+        calls.append(True)
+
+    monkeypatch.setattr(coordinator, "async_request_refresh", _fake_refresh)
+
+    coordinator._needs_fresh_read = True
+    info = SimpleNamespace(address=MAC, time=monotonic(), rssi=-60)
+    coordinator._on_ble_seen(info, None)
+
+    # Flag is consumed synchronously; the refresh runs on the event loop.
+    assert coordinator._needs_fresh_read is False
+    await hass.async_block_till_done()
+    assert calls == [True]
+
+
+async def test_ble_seen_no_refresh_when_up_to_date(hass, monkeypatch):
+    """No spurious refresh when no fresh read is owed."""
+    coordinator = await _make_coordinator(hass)
+
+    calls = []
+
+    async def _fake_refresh():
+        calls.append(True)
+
+    monkeypatch.setattr(coordinator, "async_request_refresh", _fake_refresh)
+
+    coordinator._needs_fresh_read = False
+    info = SimpleNamespace(address=MAC, time=monotonic(), rssi=-60)
+    coordinator._on_ble_seen(info, None)
+
+    await hass.async_block_till_done()
+    assert calls == []
+
+
+async def test_needs_fresh_read_lifecycle(hass, monkeypatch):
+    """A successful read clears the flag; going out_of_range re-arms it."""
+    client = FakeClient(_frame())
+    _patch_ble(monkeypatch, client)
+    coordinator = await _make_coordinator(hass)
+    coordinator._needs_fresh_read = True
+    try:
+        data = await coordinator._async_update_data()
+        assert data["bluetooth_status"] == BT_STATUS_SUCCESS
+        assert coordinator._needs_fresh_read is False
+
+        # The DataUpdateCoordinator normally stores the returned data; replicate
+        # that so _go_out_of_range finds history and returns it instead of failing.
+        coordinator.data = dict(data)
+
+        # Losing the signal re-arms the one-shot catch-up.
+        coordinator._go_out_of_range("signal lost")
+        assert coordinator._needs_fresh_read is True
+    finally:
+        if coordinator._save_cancel:
+            coordinator._save_cancel.cancel()
