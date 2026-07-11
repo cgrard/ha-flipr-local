@@ -6,6 +6,8 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 import homeassistant.util.dt as dt_util
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import UnitOfTemperature, EntityCategory
 
 from custom_components.flipr_local import (
     binary_sensor,
@@ -22,6 +24,7 @@ from custom_components.flipr_local.const import (
     CONF_MAC_ADDRESS,
     CONF_MODEL,
     CONF_TAC,
+    DATA_ACTIVE_CHLORINE_HOCL,
     DATA_ESTIMATED_FREE_CHLORINE,
     DOMAIN,
 )
@@ -71,6 +74,54 @@ async def test_setup_entities_per_platform():
     assert len(await _setup(select.async_setup_entry, coord)) == 1
     assert len(await _setup(switch.async_setup_entry, coord)) == 1
     assert len(await _setup(button.async_setup_entry, coord)) == 1
+
+
+_M = SensorStateClass.MEASUREMENT
+_D = EntityCategory.DIAGNOSTIC
+
+# (device_class, unit, precision, category, icon, state_class, options) per FliprSensor.
+# Snapshot of what async_setup_entry builds; guards the declarative-table refactor.
+_EXPECTED_FLIPR_SENSORS = {
+    "temperature": (SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS, 2, None, None, _M, None),
+    "ph": (SensorDeviceClass.PH, None, 2, None, None, _M, None),
+    "orp": (None, "mV", None, None, None, _M, None),
+    DATA_ESTIMATED_FREE_CHLORINE: (None, "ppm", 2, None, "mdi:water-percent", _M, None),
+    DATA_ACTIVE_CHLORINE_HOCL: (None, "mg/L", 4, None, "mdi:molecule", _M, None),
+    "target_equilibrium_ph": (SensorDeviceClass.PH, None, 2, _D, None, _M, None),
+    "lsi": (None, None, 2, _D, None, _M, None),
+    "lsi_status": (
+        SensorDeviceClass.ENUM, None, None, _D, None, None,
+        ["corrosive", "balanced", "scaling", "unknown"],
+    ),
+    "ph_raw": (None, "mV", None, _D, "mdi:lightning-bolt", _M, None),
+    "factory_ph": (SensorDeviceClass.PH, None, 2, _D, "mdi:factory", _M, None),
+    "battery_level": (SensorDeviceClass.BATTERY, "%", None, _D, None, _M, None),
+    "battery": (None, "mV", None, _D, "mdi:battery-bluetooth", _M, None),
+    "last_received": (SensorDeviceClass.TIMESTAMP, None, None, _D, "mdi:clock-check", None, None),
+    "raw_frame": (None, None, None, _D, "mdi:bluetooth-transfer", None, None),
+}
+
+
+async def test_flipr_sensor_specs_match_expected():
+    """Every FliprSensor from async_setup_entry has the exact expected attributes.
+
+    Snapshot of the pre-refactor behaviour; guards the declarative spec table.
+    """
+    added = await _setup(sensor.async_setup_entry, make_coordinator())
+    got = {
+        e._attr_translation_key: (
+            e._attr_device_class,
+            e._attr_native_unit_of_measurement,
+            e._attr_suggested_display_precision,
+            e._attr_entity_category,
+            e._attr_icon,
+            e._attr_state_class,
+            getattr(e, "_attr_options", None),
+        )
+        for e in added
+        if isinstance(e, sensor.FliprSensor)
+    }
+    assert got == _EXPECTED_FLIPR_SENSORS
 
 
 # ==========================================
