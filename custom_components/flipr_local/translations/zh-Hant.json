@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 腐蝕性水質 (酸性)",
           "balanced": "🟢 完美平衡的水質",
-          "scaling": "🟠 結垢性水質 (鹼性)",
-          "unknown": "⚪ 未知"
+          "scaling": "🟠 結垢性水質 (鹼性)"
         }
       },
       "target_equilibrium_ph": {

@@ -91,7 +91,7 @@ _EXPECTED_FLIPR_SENSORS = {
     "lsi": (None, None, 2, _D, None, _M, None),
     "lsi_status": (
         SensorDeviceClass.ENUM, None, None, _D, None, None,
-        ["corrosive", "balanced", "scaling", "unknown"],
+        ["corrosive", "balanced", "scaling"],
     ),
     "ph_raw": (None, "mV", None, _D, "mdi:lightning-bolt", _M, None),
     "factory_ph": (SensorDeviceClass.PH, None, 2, _D, "mdi:factory", _M, None),

@@ -145,10 +145,10 @@ class FliprParseMixin:
                 else:
                     updates["lsi_status"] = "balanced"
             else:
-                updates["lsi_status"] = "unknown"
+                updates["lsi_status"] = None
         else:
             updates["lsi"] = None
-            updates["lsi_status"] = "unknown"
+            updates["lsi_status"] = None
 
         if ph is not None:
             if orp is None or chlorine_model == "bromine":
@@ -242,15 +242,11 @@ class FliprParseMixin:
         if len(data) < 13:
             _LOGGER.debug("Frame too short: %d bytes", len(data))
             return None
-        try:
-            raw_temp = int.from_bytes(data[0:2], "little") * 0.06
-            ph_raw_mv = int.from_bytes(data[2:4], "little")
-            raw_orp = int.from_bytes(data[4:6], "little") / 2.0
-            sync_mode_raw = str(data[8])
-            bat_raw = int.from_bytes(data[11:13], "little")
-        except ValueError as e:
-            _LOGGER.debug("Frame parsing error: %s", e)
-            return None
+        raw_temp = int.from_bytes(data[0:2], "little") * 0.06
+        ph_raw_mv = int.from_bytes(data[2:4], "little")
+        raw_orp = int.from_bytes(data[4:6], "little") / 2.0
+        sync_mode_raw = str(data[8])
+        bat_raw = int.from_bytes(data[11:13], "little")
 
         if not (_PH_MV_MIN_PLAUSIBLE <= ph_raw_mv <= _PH_MV_MAX_PLAUSIBLE):
             _LOGGER.warning("Implausible pH raw value %d mV", ph_raw_mv)

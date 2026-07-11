@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Corrosief Water (Zuur)",
           "balanced": "🟢 Perfect Gebalanceerd Water",
-          "scaling": "🟠 Kalkaanslag Water (Basisch)",
-          "unknown": "⚪ Onbekend"
+          "scaling": "🟠 Kalkaanslag Water (Basisch)"
         }
       },
       "target_equilibrium_ph": {

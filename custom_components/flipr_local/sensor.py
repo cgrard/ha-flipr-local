@@ -57,7 +57,7 @@ _SENSOR_SPECS: tuple[_SensorSpec, ...] = (
     _SensorSpec(DATA_ACTIVE_CHLORINE_HOCL, unit="mg/L", precision=4, icon="mdi:molecule", state_class=_M),
     _SensorSpec("target_equilibrium_ph", device_class=SensorDeviceClass.PH, precision=2, category=_D, state_class=_M),
     _SensorSpec("lsi", precision=2, category=_D, state_class=_M),
-    _SensorSpec("lsi_status", device_class=SensorDeviceClass.ENUM, category=_D, options=["corrosive", "balanced", "scaling", "unknown"]),
+    _SensorSpec("lsi_status", device_class=SensorDeviceClass.ENUM, category=_D, options=["corrosive", "balanced", "scaling"]),
     _SensorSpec("ph_raw", unit="mV", category=_D, icon="mdi:lightning-bolt", state_class=_M),
     _SensorSpec("factory_ph", device_class=SensorDeviceClass.PH, precision=2, category=_D, icon="mdi:factory", state_class=_M),
     _SensorSpec("battery_level", device_class=SensorDeviceClass.BATTERY, unit="%", category=_D, state_class=_M),

@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Etsende Vann (Surt)",
           "balanced": "🟢 Perfekt Balansert Vann",
-          "scaling": "🟠 Kalkdannende Vann (Basisk)",
-          "unknown": "⚪ Ukjent"
+          "scaling": "🟠 Kalkdannende Vann (Basisk)"
         }
       },
       "target_equilibrium_ph": {

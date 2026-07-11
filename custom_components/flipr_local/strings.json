@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "Corrosive Water (Acidic)",
           "balanced": "Perfectly Balanced Water",
-          "scaling": "Scaling Water (Basic)",
-          "unknown": "Unknown"
+          "scaling": "Scaling Water (Basic)"
         }
       },
       "target_equilibrium_ph": {

@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Frätande Vatten (Surt)",
           "balanced": "🟢 Perfekt Balanserat Vatten",
-          "scaling": "🟠 Kalkbildande Vatten (Basiskt)",
-          "unknown": "⚪ Okänt"
+          "scaling": "🟠 Kalkbildande Vatten (Basiskt)"
         }
       },
       "target_equilibrium_ph": {

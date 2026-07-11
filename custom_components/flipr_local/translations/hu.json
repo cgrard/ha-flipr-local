@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Korrozív víz (Savas)",
           "balanced": "🟢 Tökéletesen kiegyensúlyozott víz",
-          "scaling": "🟠 Vízkövesedő víz (Lúgos)",
-          "unknown": "⚪ Ismeretlen"
+          "scaling": "🟠 Vízkövesedő víz (Lúgos)"
         }
       },
       "target_equilibrium_ph": {

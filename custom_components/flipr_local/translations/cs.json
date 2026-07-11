@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Korozivní voda (Kyselá)",
           "balanced": "🟢 Dokonale vyvážená voda",
-          "scaling": "🟠 Voda tvořící vodní kámen (Zásaditá)",
-          "unknown": "⚪ Neznámo"
+          "scaling": "🟠 Voda tvořící vodní kámen (Zásaditá)"
         }
       },
       "target_equilibrium_ph": {

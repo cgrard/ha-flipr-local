@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Água Corrosiva (Ácida)",
           "balanced": "🟢 Água Perfeitamente Equilibrada",
-          "scaling": "🟠 Água Incrustante (Básica)",
-          "unknown": "⚪ Desconhecido"
+          "scaling": "🟠 Água Incrustante (Básica)"
         }
       },
       "target_equilibrium_ph": {

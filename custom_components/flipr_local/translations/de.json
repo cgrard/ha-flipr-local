@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Korrosives Wasser (sauer)",
           "balanced": "🟢 Perfekt ausgeglichenes Wasser",
-          "scaling": "🟠 Kalkbildendes Wasser (basisch)",
-          "unknown": "⚪ Unbekannt"
+          "scaling": "🟠 Kalkbildendes Wasser (basisch)"
         }
       },
       "target_equilibrium_ph": {

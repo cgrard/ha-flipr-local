@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Korozivna voda (Kisela)",
           "balanced": "🟢 Savršeno uravnotežena voda",
-          "scaling": "🟠 Voda koja stvara kamenac (Bazična)",
-          "unknown": "⚪ Nepoznato"
+          "scaling": "🟠 Voda koja stvara kamenac (Bazična)"
         }
       },
       "target_equilibrium_ph": {

@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Ætsende Vand (Surt)",
           "balanced": "🟢 Perfekt Balanceret Vand",
-          "scaling": "🟠 Kalkdannende Vand (Basisk)",
-          "unknown": "⚪ Ukendt"
+          "scaling": "🟠 Kalkdannende Vand (Basisk)"
         }
       },
       "target_equilibrium_ph": {

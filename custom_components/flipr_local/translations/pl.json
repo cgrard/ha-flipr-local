@@ -246,8 +246,7 @@
         "state": {
           "corrosive": "🔴 Woda korozyjna (kwaśna)",
           "balanced": "🟢 Woda idealnie zbilansowana",
-          "scaling": "🟠 Woda tworząca kamień (zasadowa)",
-          "unknown": "⚪ Nieznany"
+          "scaling": "🟠 Woda tworząca kamień (zasadowa)"
         }
       },
       "target_equilibrium_ph": {

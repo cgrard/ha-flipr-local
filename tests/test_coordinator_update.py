@@ -296,7 +296,7 @@ async def test_recompute_bromine_and_missing_water_params(hass):
     coord.recompute_derived_values()
 
     assert coord.data["lsi"] is None  # missing TAC/TH -> not computable
-    assert coord.data["lsi_status"] == "unknown"
+    assert coord.data["lsi_status"] is None
     assert coord.data["estimated_free_chlorine"] is None  # bromine -> no chlorine
 
 
