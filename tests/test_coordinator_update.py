@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.flipr_local import FliprDataCoordinator
 import custom_components.flipr_local.coordinator as coordinator_mod
+import custom_components.flipr_local.ble as ble_mod
 import custom_components.flipr_local.sensor as sensor_mod
 from custom_components.flipr_local.const import (
     BT_STATUS_ERROR_RETRY,
@@ -75,16 +76,19 @@ def _patch_ble(monkeypatch, client, device_name="F3A1"):
     async def _establish(*args, **kwargs):
         return client
 
+    def _recent_info(*a, **k):
+        return SimpleNamespace(time=monotonic(), rssi=-60)
+
     monkeypatch.setattr(coordinator_mod, "async_scanner_count", lambda *a, **k: 1)
-    monkeypatch.setattr(
-        coordinator_mod,
-        "async_last_service_info",
-        lambda *a, **k: SimpleNamespace(time=monotonic(), rssi=-60),
-    )
+    # async_last_service_info is read by both the coordinator (ble_available)
+    # and the ble exchange (freshness guard) -> patch both modules.
+    monkeypatch.setattr(coordinator_mod, "async_last_service_info", _recent_info)
+    monkeypatch.setattr(ble_mod, "async_last_service_info", _recent_info)
     monkeypatch.setattr(
         coordinator_mod, "async_ble_device_from_address", lambda *a, **k: device
     )
-    monkeypatch.setattr(coordinator_mod, "establish_connection", _establish)
+    # establish_connection now lives in the ble module.
+    monkeypatch.setattr(ble_mod, "establish_connection", _establish)
 
 
 async def _make_coordinator(hass):
