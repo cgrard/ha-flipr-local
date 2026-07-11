@@ -71,6 +71,8 @@ def compute_ph_equilibrium(
 
 
 def estimate_free_chlorine(orp: float, ph: float, cya: float = 40.0) -> float | None:
+    if orp is None or ph is None or cya is None:
+        return None
     try:
         if orp < 415.0:
             _LOGGER.debug(
