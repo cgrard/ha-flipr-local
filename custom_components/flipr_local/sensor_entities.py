@@ -222,6 +222,7 @@ class FliprRealTimeRSSISensor(RestoreSensor):
         self._attr_unique_id = f"{mac}_rssi"
         self._attr_device_info = flipr_device_info(mac, model_name)
         self._attr_native_value = None
+        self._was_available = False
 
     @property
     def available(self) -> bool:
@@ -243,6 +244,7 @@ class FliprRealTimeRSSISensor(RestoreSensor):
             if last_sensor_data and last_sensor_data.native_value is not None:
                 self._attr_native_value = last_sensor_data.native_value
 
+        self._was_available = self.available
         self.async_write_ha_state()
 
         @callback
@@ -250,6 +252,7 @@ class FliprRealTimeRSSISensor(RestoreSensor):
             info: BluetoothServiceInfoBleak, change: BluetoothChange
         ) -> None:
             self._attr_native_value = info.rssi
+            self._was_available = self.available
             self.async_write_ha_state()
 
         self.async_on_remove(
@@ -261,10 +264,20 @@ class FliprRealTimeRSSISensor(RestoreSensor):
             )
         )
 
-        # FIX: removed the coordinator listener that was calling async_write_ha_state()
-        # on every coordinator poll cycle. The RSSI value is driven exclusively by BLE
-        # advertisement callbacks, not by coordinator data, so that listener was causing
-        # spurious state writes with no actual state change every N minutes.
+        # RSSI values come from advertisements, but `available` also depends on the
+        # coordinator's ble_available, which flips to False on signal loss with no
+        # advertisement to trigger a write. Listen to the coordinator and re-write only
+        # when availability actually changes, so the drop is reflected without the
+        # spurious per-poll writes a naive listener would cause.
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self._handle_coordinator_update)
+        )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        if self.available != self._was_available:
+            self._was_available = self.available
+            self.async_write_ha_state()
 
 
 class FliprNextAnalysisSensor(CoordinatorEntity, SensorEntity):

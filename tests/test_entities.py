@@ -184,6 +184,24 @@ def test_rssi_sensor_availability():
     assert no_signal.available is False
 
 
+def test_rssi_sensor_writes_only_on_availability_change():
+    """The coordinator listener re-writes on a signal drop, not on every poll."""
+    coord = make_coordinator({}, ble_available=True)
+    s = sensor.FliprRealTimeRSSISensor(coord, MAC, "X")
+    s._attr_native_value = -60
+    s._was_available = True
+    writes = []
+    s.async_write_ha_state = lambda: writes.append(1)
+
+    s._handle_coordinator_update()  # nothing changed -> no spurious write
+    assert writes == []
+
+    coord.ble_available = False  # signal lost -> availability flips -> one write
+    s._handle_coordinator_update()
+    assert writes == [1]
+    assert s.available is False and s._was_available is False
+
+
 def test_next_analysis_sensor():
     now = dt_util.utcnow()
     coord = make_coordinator(
