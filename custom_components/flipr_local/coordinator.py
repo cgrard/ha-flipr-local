@@ -266,6 +266,10 @@ class FliprDataCoordinator(
         except Exception as err:
             _LOGGER.debug("Error during final save on shutdown: %s", err)
 
+        # Let the base coordinator cancel its periodic refresh timer and shut down
+        # its request debouncer, otherwise they leak across a config-entry reload.
+        await super().async_shutdown()
+
     def update_local_state(self, updates: dict[str, Any]) -> None:
         new_data = {**self.data, **updates}
         self.async_set_updated_data(new_data)
@@ -276,6 +280,11 @@ class FliprDataCoordinator(
         self.async_set_updated_data(new_data)
 
     def _set_bt_status(self, status: str) -> None:
+        if status == BT_STATUS_OUT_OF_RANGE:
+            # Every out-of-range transition (poll, _on_ble_unavailable, GATT timeout)
+            # means we owe a fresh read once the sensor is back. Arming it here lets
+            # _on_ble_seen fire a one-shot catch-up refresh from any of those paths.
+            self._needs_fresh_read = True
         self.update_volatile_state({"bluetooth_status": status})
 
     def _data_or_fail(self, message: str) -> dict[str, Any]:
@@ -286,12 +295,9 @@ class FliprDataCoordinator(
 
     def _go_out_of_range(self, message: str) -> dict[str, Any]:
         """Mark out of range, reset retries, then return cached data or fail."""
-        self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
+        self._set_bt_status(BT_STATUS_OUT_OF_RANGE)  # also arms _needs_fresh_read
         self.retry_count = 0
         self._cancel_pending_retry()
-        # Owe a fresh read again: _on_ble_seen will trigger it as soon as the
-        # sensor reappears, rather than waiting for the next update_interval.
-        self._needs_fresh_read = True
         return self._data_or_fail(message)
 
     def _select_command(self, entry: ConfigEntry) -> tuple[str, int, str]:

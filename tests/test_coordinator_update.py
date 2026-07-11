@@ -386,3 +386,11 @@ async def test_needs_fresh_read_lifecycle(hass, monkeypatch):
     finally:
         if coordinator._save_cancel:
             coordinator._save_cancel.cancel()
+
+
+async def test_ble_unavailable_arms_catch_up(hass):
+    """Signal loss via _on_ble_unavailable arms the catch-up flag (not just polls)."""
+    coordinator = await _make_coordinator(hass)
+    coordinator._needs_fresh_read = False
+    coordinator._on_ble_unavailable(None)
+    assert coordinator._needs_fresh_read is True
