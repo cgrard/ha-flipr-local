@@ -147,13 +147,16 @@ class FliprBleMixin:
                 received_data_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=32)
 
                 def notification_handler(sender, data: bytes) -> None:
-                    try:
-                        loop.call_soon_threadsafe(received_data_queue.put_nowait, data)
-                    except asyncio.QueueFull:
-                        _LOGGER.debug(
-                            "Notification queue full for %s, dropping frame",
-                            self.safe_mac,
-                        )
+                    def _enqueue() -> None:
+                        try:
+                            received_data_queue.put_nowait(data)
+                        except asyncio.QueueFull:
+                            _LOGGER.debug(
+                                "Notification queue full for %s, dropping frame",
+                                self.safe_mac,
+                            )
+
+                    loop.call_soon_threadsafe(_enqueue)
 
                 if not is_start_max:
                     await client.start_notify(
