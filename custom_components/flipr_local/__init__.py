@@ -36,6 +36,7 @@ from .chemistry import (
     compute_ph_equilibrium,
 )
 from .battery import battery_percent_from_mv
+from .helpers import format_mac_safe, get_opt, store_key
 from .const import (
     DOMAIN,
     PLATFORMS,
@@ -105,30 +106,12 @@ _PH_MV_MIN_PLAUSIBLE = 500
 _PH_MV_MAX_PLAUSIBLE = 3000
 
 
-def _store_key(mac: str) -> str:
-    return f"{DOMAIN}_{mac.replace(':', '').lower()}"
-
-
-def _format_mac_safe(mac: str | None) -> str:
-    if not mac or len(mac) < 17:
-        return "XX:XX:XX:XX:XX:XX"
-    return f"{mac[:8]}...{mac[-5:]}"
-
-
 async def _safely_disconnect(client: BleakClient | None) -> None:
     if client and client.is_connected:
         try:
             await client.disconnect()
         except Exception as err:
             _LOGGER.debug("Ignored error during disconnect: %s", err)
-
-
-def _get_opt(entry: ConfigEntry, key: str, default: Any = None) -> Any:
-    if key in entry.options:
-        return entry.options[key]
-    if key in entry.data:
-        return entry.data[key]
-    return default
 
 
 class FliprDataCoordinator(DataUpdateCoordinator):
@@ -144,7 +127,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         self._entry_id = entry.entry_id
         self.mac = mac
         self.safe_mac = safe_mac
-        self.store = Store(hass, 1, _store_key(mac))
+        self.store = Store(hass, 1, store_key(mac))
 
         self.ble_lock = asyncio.Lock()
         self.retry_count = 0
@@ -175,7 +158,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         }
 
         self.last_configured_sync_mode = entry.options.get(CONF_SYNC_MODE)
-        self.last_configured_use_gw = _get_opt(entry, CONF_USE_GATEWAY, True)
+        self.last_configured_use_gw = get_opt(entry, CONF_USE_GATEWAY, True)
 
     @property
     def entry_id(self) -> str:
@@ -422,8 +405,8 @@ class FliprDataCoordinator(DataUpdateCoordinator):
     def _load_ph_calibration(
         self, entry: ConfigEntry
     ) -> tuple[float, float, float, float]:
-        raw_c4 = _get_opt(entry, CONF_PH_CALIB_4, DEFAULT_PH_CALIB_4)
-        raw_c7 = _get_opt(entry, CONF_PH_CALIB_7, DEFAULT_PH_CALIB_7)
+        raw_c4 = get_opt(entry, CONF_PH_CALIB_4, DEFAULT_PH_CALIB_4)
+        raw_c7 = get_opt(entry, CONF_PH_CALIB_7, DEFAULT_PH_CALIB_7)
         try:
             c4_mv = get_mv_from_input(raw_c4)
         except ValueError:
@@ -442,8 +425,8 @@ class FliprDataCoordinator(DataUpdateCoordinator):
                 self.safe_mac,
             )
             c7_mv = get_mv_from_input(DEFAULT_PH_CALIB_7)
-        ph_ref_7 = float(_get_opt(entry, CONF_PH_REF_7, DEFAULT_PH_REF_7))
-        ph_ref_4 = float(_get_opt(entry, CONF_PH_REF_4, DEFAULT_PH_REF_4))
+        ph_ref_7 = float(get_opt(entry, CONF_PH_REF_7, DEFAULT_PH_REF_7))
+        ph_ref_4 = float(get_opt(entry, CONF_PH_REF_4, DEFAULT_PH_REF_4))
         return c4_mv, c7_mv, ph_ref_4, ph_ref_7
 
     def _build_chemistry_updates(
@@ -521,10 +504,10 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         cya_raw = self.data.get(CONF_CYA)
         cya = float(cya_raw) if cya_raw is not None else 40.0
 
-        chlorine_model = _get_opt(current_entry, CONF_CHLORINE_MODEL, "chlorine")
+        chlorine_model = get_opt(current_entry, CONF_CHLORINE_MODEL, "chlorine")
         updates: dict[str, Any] = {}
 
-        temp_offset = float(_get_opt(current_entry, CONF_TEMP_OFFSET, 0.0))
+        temp_offset = float(get_opt(current_entry, CONF_TEMP_OFFSET, 0.0))
         if raw_temp is not None:
             updates["temperature"] = round(raw_temp + temp_offset, 2)
             temp = updates["temperature"]
@@ -542,9 +525,9 @@ class FliprDataCoordinator(DataUpdateCoordinator):
             ph = self.data.get("ph")
 
         if raw_orp is not None:
-            orp_target = float(_get_opt(current_entry, CONF_ORP_REF, DEFAULT_ORP_REF))
+            orp_target = float(get_opt(current_entry, CONF_ORP_REF, DEFAULT_ORP_REF))
             orp_measured = float(
-                _get_opt(current_entry, CONF_ORP_CALIB, DEFAULT_ORP_CALIB)
+                get_opt(current_entry, CONF_ORP_CALIB, DEFAULT_ORP_CALIB)
             )
             orp_offset = orp_target - orp_measured
             updates["orp"] = round(raw_orp + orp_offset)
@@ -625,8 +608,8 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         gateway/sync configuration; afterwards it comes from the pending command.
         """
         if not self._init_done:
-            if _get_opt(entry, CONF_USE_GATEWAY, True):
-                cmd_type, cmd_val = "mode", int(_get_opt(entry, CONF_SYNC_MODE, "2"))
+            if get_opt(entry, CONF_USE_GATEWAY, True):
+                cmd_type, cmd_val = "mode", int(get_opt(entry, CONF_SYNC_MODE, "2"))
             else:
                 cmd_type, cmd_val = "analyze", 0x01
         else:
@@ -660,9 +643,9 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         raw_temp, ph_raw_mv, raw_orp, sync_mode_raw, bat_raw = parsed
         actual_sync_mode = sync_mode_raw if sync_mode_raw in VALID_SYNC_MODES else None
 
-        temp_offset = float(_get_opt(entry, CONF_TEMP_OFFSET, 0.0))
-        orp_target = float(_get_opt(entry, CONF_ORP_REF, DEFAULT_ORP_REF))
-        orp_measured = float(_get_opt(entry, CONF_ORP_CALIB, DEFAULT_ORP_CALIB))
+        temp_offset = float(get_opt(entry, CONF_TEMP_OFFSET, 0.0))
+        orp_target = float(get_opt(entry, CONF_ORP_REF, DEFAULT_ORP_REF))
+        orp_measured = float(get_opt(entry, CONF_ORP_CALIB, DEFAULT_ORP_CALIB))
         orp_offset = orp_target - orp_measured
 
         temp = raw_temp + temp_offset
@@ -681,7 +664,7 @@ class FliprDataCoordinator(DataUpdateCoordinator):
         cya_raw = self.data.get(CONF_CYA)
         cya_val = float(cya_raw) if cya_raw is not None else 40.0
 
-        chlorine_model = _get_opt(entry, CONF_CHLORINE_MODEL, "chlorine")
+        chlorine_model = get_opt(entry, CONF_CHLORINE_MODEL, "chlorine")
 
         now = dt_util.utcnow()
         measurement_time = (
@@ -1139,7 +1122,7 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
         return
 
     new_sync_mode = entry.options.get(CONF_SYNC_MODE)
-    new_use_gw = _get_opt(entry, CONF_USE_GATEWAY, True)
+    new_use_gw = get_opt(entry, CONF_USE_GATEWAY, True)
 
     mode_changed = new_sync_mode != coordinator.last_configured_sync_mode
     gw_changed = new_use_gw != coordinator.last_configured_use_gw
@@ -1176,7 +1159,7 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     mac = entry.data[CONF_MAC_ADDRESS]
-    safe_mac = _format_mac_safe(mac)
+    safe_mac = format_mac_safe(mac)
 
     coordinator = FliprDataCoordinator(hass, entry, mac, safe_mac)
     await coordinator.async_initialize()
@@ -1217,5 +1200,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     mac = entry.data.get(CONF_MAC_ADDRESS)
     if mac:
-        store = Store(hass, 1, _store_key(mac))
+        store = Store(hass, 1, store_key(mac))
         await store.async_remove()
