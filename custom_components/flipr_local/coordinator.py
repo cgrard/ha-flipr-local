@@ -114,9 +114,15 @@ class FliprDataCoordinator(
 
     @property
     def ble_available(self) -> bool:
+        # A fresh advert is the authoritative "in range" signal, not the
+        # _ble_available flag. That flag is driven by HA's advert/unavailable
+        # callbacks and can get stuck False at marginal signal: async_track_unavailable
+        # fires _on_ble_unavailable, but the matching _on_ble_seen advert callback does
+        # not always re-fire to flip it back. Gating on the flag then stranded the
+        # coordinator in out_of_range until a manual reload, even while adverts kept
+        # arriving. So trust async_last_service_info; the flag only drives the
+        # _on_ble_seen recovery edge, never a hard veto here.
         if async_scanner_count(self.hass, connectable=False) == 0:
-            return False
-        if not self._ble_available:
             return False
         last_info = async_last_service_info(self.hass, self.mac, connectable=False)
         if last_info:

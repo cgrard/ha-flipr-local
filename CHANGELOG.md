@@ -5,6 +5,12 @@ Tous les changements notables de ce projet sont documentés dans ce fichier.
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [1.2.2] - 2026-07-12
+
+### Corrigé
+
+- Auto-récupération du signal Bluetooth : la disponibilité se basait en dur sur un indicateur interne piloté par les rappels Bluetooth de Home Assistant. À signal faible, cet indicateur pouvait rester bloqué sur « hors de portée » (l'événement de perte se déclenchait sans que l'événement de retour ne le réarme), figeant la sonde en `out_of_range` jusqu'à un rechargement manuel de l'intégration, alors même que des trames d'advertisement fraîches continuaient d'arriver. La disponibilité se fonde désormais sur la dernière trame réellement reçue, si bien que l'intégration se rétablit d'elle-même au cycle suivant. Test de non-régression ajouté.
+
 ## [1.2.1] - 2026-07-11
 
 ### Corrigé

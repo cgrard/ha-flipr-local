@@ -396,3 +396,41 @@ async def test_ble_unavailable_arms_catch_up(hass):
     coordinator._needs_fresh_read = False
     coordinator._on_ble_unavailable(None)
     assert coordinator._needs_fresh_read is True
+
+
+async def test_ble_available_trusts_fresh_advert_over_stuck_flag(hass, monkeypatch):
+    """A stuck _ble_available=False must not veto availability when an advert is fresh.
+
+    Root-cause guard: at marginal signal async_track_unavailable can flip the flag
+    False without a matching _on_ble_seen advert callback flipping it back. The flag
+    then strands the coordinator in out_of_range until a manual reload, even while
+    adverts keep arriving. ble_available must follow the fresh advert, not the flag.
+    """
+    coordinator = await _make_coordinator(hass)
+    monkeypatch.setattr(coordinator_mod, "async_scanner_count", lambda *a, **k: 1)
+    monkeypatch.setattr(
+        coordinator_mod,
+        "async_last_service_info",
+        lambda *a, **k: SimpleNamespace(time=monotonic(), rssi=-75),
+    )
+
+    coordinator._ble_available = False  # stuck from a missed _on_ble_seen
+    assert coordinator.ble_available is True
+
+    # A genuinely stale advert (older than the freshness window) stays out of range.
+    stale = monotonic() - (coordinator_mod.BLE_RECENTLY_SEEN_THRESHOLD_S + 5)
+    monkeypatch.setattr(
+        coordinator_mod,
+        "async_last_service_info",
+        lambda *a, **k: SimpleNamespace(time=stale, rssi=-75),
+    )
+    assert coordinator.ble_available is False
+
+    # No scanners at all is still unavailable regardless of a cached advert.
+    monkeypatch.setattr(coordinator_mod, "async_scanner_count", lambda *a, **k: 0)
+    monkeypatch.setattr(
+        coordinator_mod,
+        "async_last_service_info",
+        lambda *a, **k: SimpleNamespace(time=monotonic(), rssi=-75),
+    )
+    assert coordinator.ble_available is False
