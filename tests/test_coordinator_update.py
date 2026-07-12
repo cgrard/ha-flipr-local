@@ -396,6 +396,32 @@ async def test_ble_unavailable_arms_catch_up(hass):
     coordinator._needs_fresh_read = False
     coordinator._on_ble_unavailable(None)
     assert coordinator._needs_fresh_read is True
+    coordinator._cancel_pending_retry()
+
+
+async def test_out_of_range_schedules_fast_retry(hass):
+    """Out of range must re-poll on a short cadence, not wait a full update_interval.
+
+    Root cause of the field "stuck until a manual reload" reports: _go_out_of_range
+    armed no retry, so after a restart landing in a brief signal gap the sensor sat
+    out_of_range for up to update_interval (an hour). A short self-perpetuating retry
+    recovers within ~a minute, the same as a manual reload.
+    """
+    coordinator = await _make_coordinator(hass)
+    coordinator.data = {**coordinator.data, "ph_raw": 1600}  # history so it returns
+    assert coordinator._retry_cancel is None
+    coordinator._go_out_of_range("out of range")
+    assert coordinator._retry_cancel is not None
+    coordinator._cancel_pending_retry()
+
+
+async def test_ble_unavailable_schedules_fast_retry(hass):
+    """Losing the signal via the unavailable callback also arms the short retry."""
+    coordinator = await _make_coordinator(hass)
+    assert coordinator._retry_cancel is None
+    coordinator._on_ble_unavailable(None)
+    assert coordinator._retry_cancel is not None
+    coordinator._cancel_pending_retry()
 
 
 async def test_ble_available_trusts_fresh_advert_over_stuck_flag(hass, monkeypatch):

@@ -46,6 +46,7 @@ from .const import (
     BT_STATUS_PAUSED,
     BT_STATUS_OUT_OF_RANGE,
     BLE_RECENTLY_SEEN_THRESHOLD_S,
+    OUT_OF_RANGE_RETRY_S,
     get_flipr_model,
 )
 
@@ -157,12 +158,38 @@ class FliprDataCoordinator(
             self._retry_cancel()
             self._retry_cancel = None
 
+    def _schedule_out_of_range_retry(self) -> None:
+        """Re-poll soon while out of range instead of waiting a full update_interval.
+
+        Recovery must not hinge on the _on_ble_seen advert callback (HA may not
+        deliver it for a static advertisement) nor on the next hourly tick. After a
+        restart that lands during a brief signal gap the sensor would otherwise sit
+        out_of_range for up to update_interval and only recover on a manual reload.
+        A short self-perpetuating poll catches the signal within ~a minute, exactly
+        as a reload does: each retry re-runs _async_update_data, which either reads
+        (back in range) or lands here again and re-arms.
+        """
+        if self._retry_cancel:
+            self._retry_cancel()
+            self._retry_cancel = None
+        if self._is_shutdown:
+            return
+
+        @callback
+        def _retry(_now) -> None:
+            self._retry_cancel = None
+            if self._is_shutdown:
+                return
+            self.hass.async_create_task(self.async_request_refresh())
+
+        self._retry_cancel = async_call_later(self.hass, OUT_OF_RANGE_RETRY_S, _retry)
+
     @callback
     def _on_ble_unavailable(self, _info: BluetoothServiceInfoBleak) -> None:
         _LOGGER.debug("Flipr %s: BLE signal lost", self.safe_mac)
         self._ble_available = False
         self._set_bt_status(BT_STATUS_OUT_OF_RANGE)
-        self._cancel_pending_retry()
+        self._schedule_out_of_range_retry()
         self.retry_count = 0
 
     @callback
@@ -303,7 +330,7 @@ class FliprDataCoordinator(
         """Mark out of range, reset retries, then return cached data or fail."""
         self._set_bt_status(BT_STATUS_OUT_OF_RANGE)  # also arms _needs_fresh_read
         self.retry_count = 0
-        self._cancel_pending_retry()
+        self._schedule_out_of_range_retry()
         return self._data_or_fail(message)
 
     def _select_command(self, entry: ConfigEntry) -> tuple[str, int, str]:
@@ -408,6 +435,7 @@ class FliprDataCoordinator(
             return result
 
         self.retry_count = 0
+        self._cancel_pending_retry()
         # GATT exchange succeeded: we no longer owe a catch-up read.
         self._needs_fresh_read = False
         return self._assemble_new_data(result, current_entry, cmd_type)

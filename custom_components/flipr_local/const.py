@@ -52,6 +52,11 @@ SAVE_DEBOUNCE_DELAY = 2.0
 
 BLE_RECENTLY_SEEN_THRESHOLD_S: int = 120
 
+# While out of range we re-poll on this short cadence instead of waiting a full
+# update_interval, so recovery after a restart that lands in a signal gap takes
+# ~a minute (like a manual reload) rather than up to an hour.
+OUT_OF_RANGE_RETRY_S: int = 60
+
 # Plausibility anchors for the raw battery voltage (a wider window is derived
 # from these in __init__.py). The actual state-of-charge curve for the Li-SOCl2
 # cell lives in battery.py.

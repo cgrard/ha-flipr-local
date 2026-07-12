@@ -5,6 +5,12 @@ Tous les changements notables de ce projet sont documentés dans ce fichier.
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [1.2.3] - 2026-07-12
+
+### Corrigé
+
+- Récupération automatique après une perte de signal : quand elle passait « hors de portée », l'intégration attendait la prochaine interrogation régulière (jusqu'à une heure) au lieu de réessayer rapidement. Après un redémarrage tombant pendant un bref trou de signal, la sonde pouvait ainsi rester bloquée sur « hors de portée » jusqu'à un rechargement manuel de l'intégration. Elle réessaie désormais toutes les minutes tant qu'elle est hors de portée et raccroche la mesure en une minute environ, exactement comme le faisait le rechargement manuel.
+
 ## [1.2.2] - 2026-07-12
 
 ### Corrigé
