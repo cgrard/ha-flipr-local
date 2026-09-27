@@ -32,6 +32,7 @@ from .parser import FliprParseMixin
 from .store import FliprStoreMixin
 from .helpers import get_opt, store_key
 from .const import (
+    CONF_MODEL,
     CONF_USE_GATEWAY,
     CONF_SYNC_MODE,
     FLIPR_ANALYZE_UUID,
@@ -420,7 +421,12 @@ class FliprDataCoordinator(
 
         # Identify model once before connecting to drive both connection options
         # and the data-reading strategy, without any GATT introspection.
-        is_start_max = get_flipr_model(device.name).startswith("Flipr Start")
+        # Passive scanners (ESPHome proxies) often drop the local name, so fall
+        # back to the model stored at setup when the live name is unrecognised.
+        model = get_flipr_model(device.name)
+        if model == "Flipr":
+            model = current_entry.data.get(CONF_MODEL) or model
+        is_start_max = model.startswith("Flipr Start")
 
         result = await self._run_ble_exchange(
             device,

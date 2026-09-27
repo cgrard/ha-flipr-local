@@ -5,6 +5,12 @@ Tous les changements notables de ce projet sont documentés dans ce fichier.
 Le format s'appuie sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
+## [1.2.4] - 2026-09-27
+
+### Corrigé
+
+- Flipr Start Max derrière un proxy Bluetooth ESPHome : le modèle était déduit uniquement du nom Bluetooth reçu à la connexion, que les proxies ne transmettent souvent pas. La sonde était alors traitée comme un AnalysR et l'intégration lui demandait des notifications qu'elle ne gère pas (`Characteristic 00000006-... does not have notify or indicate property set`), si bien qu'aucune mesure n'aboutissait. Quand le nom est absent ou inconnu, l'intégration se rabat désormais sur le modèle enregistré à l'installation ([#1](https://github.com/cgrard/ha-flipr-local/issues/1)).
+
 ## [1.2.3] - 2026-07-12
 
 ### Corrigé
@@ -97,6 +103,9 @@ et ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 - Calibration pH/ORP configurable, offset de température, paramètres de l'eau (TAC, TH, TDS, CyA) et seuils d'alerte via le flux d'options.
 - Sélection du modèle chlore/brome, contrôle du mode de synchronisation et mode passerelle.
 
+[1.2.4]: https://github.com/cgrard/ha-flipr-local/compare/v1.2.3...v1.2.4
+[1.2.3]: https://github.com/cgrard/ha-flipr-local/compare/v1.2.2...v1.2.3
+[1.2.2]: https://github.com/cgrard/ha-flipr-local/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/cgrard/ha-flipr-local/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/cgrard/ha-flipr-local/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cgrard/ha-flipr-local/compare/v1.0.0...v1.1.0

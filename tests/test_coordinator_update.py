@@ -155,6 +155,38 @@ async def test_start_max_poll_cycle_returns_parsed_data(hass, monkeypatch):
     assert data["bluetooth_status"] == BT_STATUS_SUCCESS
 
 
+async def test_start_max_detected_from_entry_when_name_missing(hass, monkeypatch):
+    """Via an ESPHome proxy the live name can be missing: use the stored model
+    so the Start Max poll path runs instead of an unsupported start_notify."""
+
+    async def _instant_sleep(_seconds):
+        return None
+
+    async def _no_notify(char, handler):
+        raise Exception("does not have notify or indicate property set")
+
+    monkeypatch.setattr(coordinator_mod.asyncio, "sleep", _instant_sleep)
+
+    frame = _frame(ph_mv=1700, sync=1)
+    client = FakeClient(frame)
+    client.start_notify = _no_notify
+    _patch_ble(monkeypatch, client, device_name=None)
+
+    coordinator = await _make_coordinator(hass)
+    hass.config_entries.async_update_entry(
+        coordinator.entry,
+        data={**coordinator.entry.data, CONF_MODEL: "Flipr Start Max"},
+    )
+    try:
+        data = await coordinator._async_update_data()
+    finally:
+        if coordinator._save_cancel:
+            coordinator._save_cancel.cancel()
+
+    assert data["ph_raw"] == 1700
+    assert data["bluetooth_status"] == BT_STATUS_SUCCESS
+
+
 async def test_standby_frame_raises_without_history(hass, monkeypatch):
     """An all-zero (standby) frame with no stored history raises UpdateFailed."""
     client = FakeClient(b"\x00" * 13)
