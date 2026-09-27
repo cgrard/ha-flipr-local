@@ -7,13 +7,14 @@ from time import monotonic
 from types import SimpleNamespace
 
 import pytest
+from bleak.exc import BleakError
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.flipr_local import FliprDataCoordinator
-import custom_components.flipr_local.coordinator as coordinator_mod
 import custom_components.flipr_local.ble as ble_mod
+import custom_components.flipr_local.coordinator as coordinator_mod
 import custom_components.flipr_local.sensor as sensor_mod
+from custom_components.flipr_local import FliprDataCoordinator
 from custom_components.flipr_local.const import (
     BT_STATUS_ERROR_RETRY,
     BT_STATUS_SUCCESS,
@@ -163,7 +164,7 @@ async def test_start_max_detected_from_entry_when_name_missing(hass, monkeypatch
         return None
 
     async def _no_notify(char, handler):
-        raise Exception("does not have notify or indicate property set")
+        raise BleakError("does not have notify or indicate property set")
 
     monkeypatch.setattr(coordinator_mod.asyncio, "sleep", _instant_sleep)
 

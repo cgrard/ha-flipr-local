@@ -12,11 +12,11 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 
 from .const import (
+    CONF_MAC_ADDRESS,
+    CONF_SYNC_MODE,
+    CONF_USE_GATEWAY,
     DOMAIN,
     PLATFORMS,
-    CONF_MAC_ADDRESS,
-    CONF_USE_GATEWAY,
-    CONF_SYNC_MODE,
     options_updated_signal,
 )
 from .coordinator import FliprDataCoordinator

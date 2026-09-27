@@ -44,14 +44,14 @@ def battery_percent_from_mv(mv: float) -> int:
     """
     points = BATTERY_CURVE
     if mv >= points[0][0]:
-        return int(round(points[0][1]))
+        return round(points[0][1])
     if mv <= points[-1][0]:
-        return int(round(points[-1][1]))
+        return round(points[-1][1])
 
     for (hi_mv, hi_pct), (lo_mv, lo_pct) in pairwise(points):
         if lo_mv <= mv <= hi_mv:
             fraction = (mv - lo_mv) / (hi_mv - lo_mv)
-            return int(round(lo_pct + fraction * (hi_pct - lo_pct)))
+            return round(lo_pct + fraction * (hi_pct - lo_pct))
 
     # Defensive: the loop above covers the whole range between the bounds.
-    return int(round(points[-1][1]))
+    return round(points[-1][1])

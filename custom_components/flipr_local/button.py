@@ -2,18 +2,20 @@
 # Copyright (c) 2026 cgrard
 # This file is part of Flipr Local.
 
-import logging
 import asyncio
+import logging
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import (
+    BT_STATUS_OUT_OF_RANGE,
+    TIMEOUT_FORCE_REFRESH,
     flipr_device_info,
     resolve_entry_context,
-    TIMEOUT_FORCE_REFRESH,
-    BT_STATUS_OUT_OF_RANGE,
 )
 
 _LOGGER = logging.getLogger(__name__)

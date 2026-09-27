@@ -1,0 +1,4 @@
+[lint]
+# Broad catches are deliberate: BLE stacks and proxies raise arbitrary
+# exception types, and a failed save or disconnect must never crash the cycle.
+extend-ignore = ["BLE001"]

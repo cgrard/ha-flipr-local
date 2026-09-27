@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import homeassistant.util.dt as dt_util
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfTemperature, EntityCategory
+from homeassistant.const import EntityCategory, UnitOfTemperature
 
 from custom_components.flipr_local import (
     binary_sensor,

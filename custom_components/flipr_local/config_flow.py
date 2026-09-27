@@ -2,8 +2,9 @@
 # Copyright (c) 2026 cgrard
 # This file is part of Flipr Local.
 
-import voluptuous as vol
 import re
+
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
@@ -14,48 +15,48 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
-    DOMAIN,
+    CONF_CHLORINE_MODEL,
+    CONF_CYA,
     CONF_MAC_ADDRESS,
     CONF_MODEL,
+    CONF_ORP_CALIB,
+    CONF_ORP_MAX,
+    CONF_ORP_MIN,
+    CONF_ORP_REF,
     CONF_PH_CALIB_4,
     CONF_PH_CALIB_7,
-    CONF_PH_MIN,
     CONF_PH_MAX,
-    CONF_ORP_MIN,
-    CONF_ORP_MAX,
-    CONF_ORP_CALIB,
-    CONF_ORP_REF,
-    CONF_TEMP_MIN,
-    CONF_TEMP_MAX,
-    CONF_TEMP_OFFSET,
-    CONF_PH_REF_7,
+    CONF_PH_MIN,
     CONF_PH_REF_4,
-    CONF_USE_GATEWAY,
-    CONF_CHLORINE_MODEL,
+    CONF_PH_REF_7,
     CONF_SYNC_MODE,
-    CONF_CYA,
-    get_flipr_model,
-    DEFAULT_PH_MIN,
-    DEFAULT_PH_MAX,
-    DEFAULT_ORP_MIN,
+    CONF_TEMP_MAX,
+    CONF_TEMP_MIN,
+    CONF_TEMP_OFFSET,
+    CONF_USE_GATEWAY,
+    DEFAULT_ORP_CALIB,
     DEFAULT_ORP_MAX,
-    DEFAULT_TEMP_MIN,
-    DEFAULT_TEMP_MAX,
+    DEFAULT_ORP_MIN,
+    DEFAULT_ORP_REF,
     DEFAULT_PH_CALIB_4,
     DEFAULT_PH_CALIB_7,
+    DEFAULT_PH_MAX,
+    DEFAULT_PH_MIN,
     DEFAULT_PH_REF_4,
     DEFAULT_PH_REF_7,
-    DEFAULT_ORP_CALIB,
-    DEFAULT_ORP_REF,
+    DEFAULT_TEMP_MAX,
+    DEFAULT_TEMP_MIN,
+    DOMAIN,
+    get_flipr_model,
 )
 from .flow_schema import (
     PROBE_FIELDS,
     THRESHOLD_FIELDS,
-    validate_calibration,
     _dropdown,
     _flatten_sections,
     _num_section,
     _number,
+    validate_calibration,
 )
 
 MANUAL_ENTRY = "manual"

@@ -5,51 +5,52 @@
 """Flipr Local data coordinator: BLE read cycle, frame parsing, derived-value
 computation and on-disk persistence for a single Flipr sensor."""
 
-import logging
 import asyncio
-from typing import Any
-import homeassistant.util.dt as dt_util
+import logging
 from time import monotonic
+from typing import Any
+
+import homeassistant.util.dt as dt_util
 from homeassistant.components.bluetooth import (
-    async_ble_device_from_address,
-    async_last_service_info,
-    async_scanner_count,
-    async_register_callback,
-    async_track_unavailable,
     BluetoothCallbackMatcher,
     BluetoothChange,
-    BluetoothServiceInfoBleak,
     BluetoothScanningMode,
+    BluetoothServiceInfoBleak,
+    async_ble_device_from_address,
+    async_last_service_info,
+    async_register_callback,
+    async_scanner_count,
+    async_track_unavailable,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback, CALLBACK_TYPE
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.helpers.storage import Store
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.storage import Store
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .ble import FliprBleMixin
-from .parser import FliprParseMixin
-from .store import FliprStoreMixin
-from .helpers import get_opt, store_key
 from .const import (
-    CONF_MODEL,
-    CONF_USE_GATEWAY,
-    CONF_SYNC_MODE,
-    FLIPR_ANALYZE_UUID,
-    SYNC_CHAR_UUID,
-    DEFAULT_UPDATE_INTERVAL,
-    DEBOUNCE_COOLDOWN,
-    EXPECTED_FRAME_HEX_LEN,
-    BT_STATUS_WAITING,
+    BLE_RECENTLY_SEEN_THRESHOLD_S,
     BT_STATUS_ERROR,
     BT_STATUS_ERROR_RETRY,
-    BT_STATUS_WRITE_FAILED,
-    BT_STATUS_PAUSED,
     BT_STATUS_OUT_OF_RANGE,
-    BLE_RECENTLY_SEEN_THRESHOLD_S,
+    BT_STATUS_PAUSED,
+    BT_STATUS_WAITING,
+    BT_STATUS_WRITE_FAILED,
+    CONF_MODEL,
+    CONF_SYNC_MODE,
+    CONF_USE_GATEWAY,
+    DEBOUNCE_COOLDOWN,
+    DEFAULT_UPDATE_INTERVAL,
+    EXPECTED_FRAME_HEX_LEN,
+    FLIPR_ANALYZE_UUID,
     OUT_OF_RANGE_RETRY_S,
+    SYNC_CHAR_UUID,
     get_flipr_model,
 )
+from .helpers import get_opt, store_key
+from .parser import FliprParseMixin
+from .store import FliprStoreMixin
 
 _LOGGER = logging.getLogger(__name__)
 

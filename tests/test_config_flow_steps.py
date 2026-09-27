@@ -5,7 +5,7 @@
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-import custom_components.flipr_local.config_flow as config_flow
+from custom_components.flipr_local import config_flow
 from custom_components.flipr_local.config_flow import FliprConfigFlow
 from custom_components.flipr_local.const import (
     CONF_CHLORINE_MODEL,
@@ -13,6 +13,8 @@ from custom_components.flipr_local.const import (
     CONF_MAC_ADDRESS,
     CONF_MODEL,
     CONF_ORP_CALIB,
+    CONF_ORP_MAX,
+    CONF_ORP_MIN,
     CONF_ORP_REF,
     CONF_PH_CALIB_4,
     CONF_PH_CALIB_7,
@@ -20,8 +22,6 @@ from custom_components.flipr_local.const import (
     CONF_PH_MIN,
     CONF_PH_REF_4,
     CONF_PH_REF_7,
-    CONF_ORP_MAX,
-    CONF_ORP_MIN,
     CONF_SYNC_MODE,
     CONF_TEMP_MAX,
     CONF_TEMP_MIN,

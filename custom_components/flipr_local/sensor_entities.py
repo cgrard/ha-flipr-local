@@ -7,45 +7,47 @@ sensors plus the sync-mode, bluetooth-status, live-RSSI and next-analysis sensor
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime as dt_datetime
 from typing import Any, ClassVar
-import logging
+
 import homeassistant.util.dt as dt_util
-from homeassistant.components.sensor import (
-    SensorEntity,
-    SensorDeviceClass,
-    SensorStateClass,
-    RestoreSensor,
-)
 from homeassistant.components.bluetooth import (
-    async_register_callback,
     BluetoothCallbackMatcher,
     BluetoothChange,
+    BluetoothScanningMode,
     BluetoothServiceInfoBleak,
     async_last_service_info,
-    BluetoothScanningMode,
+    async_register_callback,
+)
+from homeassistant.components.sensor import (
+    RestoreSensor,
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import (
-    CONF_CHLORINE_MODEL,
-    flipr_device_info,
-    DATA_ESTIMATED_FREE_CHLORINE,
-    DATA_ACTIVE_CHLORINE_HOCL,
-    BT_STATUS_WAITING,
     BT_STATUS_CONNECTING,
-    BT_STATUS_WAKING_UP,
-    BT_STATUS_REQUESTING,
-    BT_STATUS_READING,
-    BT_STATUS_WRITING_SYNC,
-    BT_STATUS_SUCCESS,
-    BT_STATUS_SYNC_APPLIED,
     BT_STATUS_ERROR,
     BT_STATUS_ERROR_RETRY,
-    BT_STATUS_WRITE_FAILED,
-    BT_STATUS_PAUSED,
     BT_STATUS_OUT_OF_RANGE,
+    BT_STATUS_PAUSED,
+    BT_STATUS_READING,
+    BT_STATUS_REQUESTING,
+    BT_STATUS_SUCCESS,
+    BT_STATUS_SYNC_APPLIED,
+    BT_STATUS_WAITING,
+    BT_STATUS_WAKING_UP,
+    BT_STATUS_WRITE_FAILED,
+    BT_STATUS_WRITING_SYNC,
+    CONF_CHLORINE_MODEL,
+    DATA_ACTIVE_CHLORINE_HOCL,
+    DATA_ESTIMATED_FREE_CHLORINE,
+    flipr_device_info,
 )
 from .entity import FliprOptionsUpdatedEntity
 

@@ -3,18 +3,20 @@
 # This file is part of Flipr Local.
 
 import logging
+
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.const import EntityCategory
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import (
-    flipr_device_info,
-    resolve_entry_context,
     BT_STATUS_OUT_OF_RANGE,
     BT_STATUS_PAUSED,
     BT_STATUS_WAITING,
+    flipr_device_info,
+    resolve_entry_context,
 )
 
 _LOGGER = logging.getLogger(__name__)

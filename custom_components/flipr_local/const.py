@@ -3,6 +3,7 @@
 # This file is part of Flipr Local.
 
 from datetime import timedelta
+
 from homeassistant.helpers.device_registry import DeviceInfo
 
 DOMAIN = "flipr_local"

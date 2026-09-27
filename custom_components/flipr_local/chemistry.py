@@ -2,8 +2,9 @@
 # Copyright (c) 2026 cgrard
 # This file is part of Flipr Local.
 
-import math
 import logging
+import math
+
 from .const import PH_FACTORY_OFFSET, PH_FACTORY_SLOPE
 
 _LOGGER = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 _CYA_HOCl_MAX_FACTOR = 50.0
 
 
-def get_mv_from_input(val: float | int | str) -> float:
+def get_mv_from_input(val: float | str) -> float:
     try:
         val_f = float(val)
     except (ValueError, TypeError) as err:
@@ -83,8 +84,7 @@ def estimate_free_chlorine(orp: float, ph: float, cya: float = 40.0) -> float | 
         amplifier = 657 - (51 * ph)
         # No abs() here: a negative amplifier (pH > 12.88) is also invalid and is
         # floored to a small positive value to keep the exponent well-defined.
-        if amplifier < 0.1:
-            amplifier = 0.1
+        amplifier = max(amplifier, 0.1)
 
         exponent = (effective_orp - 1065 + (50 * ph)) / amplifier
         fc_theoretical = math.pow(10, exponent)

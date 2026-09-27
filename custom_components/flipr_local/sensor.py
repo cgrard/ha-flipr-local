@@ -11,22 +11,22 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfTemperature, EntityCategory
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    resolve_entry_context,
-    DATA_ESTIMATED_FREE_CHLORINE,
     DATA_ACTIVE_CHLORINE_HOCL,
+    DATA_ESTIMATED_FREE_CHLORINE,
+    resolve_entry_context,
 )
 from .sensor_entities import (
+    FliprBluetoothStatusSensor,
+    FliprNextAnalysisSensor,
+    FliprRealTimeRSSISensor,
     FliprSensor,
     FliprSyncModeSensor,
-    FliprBluetoothStatusSensor,
-    FliprRealTimeRSSISensor,
-    FliprNextAnalysisSensor,
 )
 
 _LOGGER = logging.getLogger(__name__)

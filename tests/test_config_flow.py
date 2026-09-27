@@ -2,10 +2,6 @@
 # Copyright (c) 2026 cgrard
 # This file is part of Flipr Local.
 
-from custom_components.flipr_local.flow_schema import (
-    _flatten_sections,
-    validate_calibration,
-)
 from custom_components.flipr_local.const import (
     CONF_ORP_MAX,
     CONF_ORP_MIN,
@@ -17,6 +13,10 @@ from custom_components.flipr_local.const import (
     CONF_PH_REF_7,
     CONF_TEMP_MAX,
     CONF_TEMP_MIN,
+)
+from custom_components.flipr_local.flow_schema import (
+    _flatten_sections,
+    validate_calibration,
 )
 
 # A calibration payload that passes every check (negative-slope probe: the pH 7

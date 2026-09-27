@@ -3,29 +3,30 @@
 # This file is part of Flipr Local.
 
 from homeassistant.components.binary_sensor import (
-    BinarySensorEntity,
     BinarySensorDeviceClass,
+    BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import (
+    CONF_ORP_MAX,
+    CONF_ORP_MIN,
+    CONF_PH_MAX,
+    CONF_PH_MIN,
+    CONF_TEMP_MAX,
+    CONF_TEMP_MIN,
+    DEFAULT_ORP_MAX,
+    DEFAULT_ORP_MIN,
+    DEFAULT_PH_MAX,
+    DEFAULT_PH_MIN,
+    DEFAULT_TEMP_MAX,
+    DEFAULT_TEMP_MIN,
     flipr_device_info,
     resolve_entry_context,
-    CONF_PH_MIN,
-    CONF_PH_MAX,
-    CONF_ORP_MIN,
-    CONF_ORP_MAX,
-    CONF_TEMP_MIN,
-    CONF_TEMP_MAX,
-    DEFAULT_PH_MIN,
-    DEFAULT_PH_MAX,
-    DEFAULT_ORP_MIN,
-    DEFAULT_ORP_MAX,
-    DEFAULT_TEMP_MIN,
-    DEFAULT_TEMP_MAX,
 )
 from .entity import FliprOptionsUpdatedEntity
 

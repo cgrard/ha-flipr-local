@@ -20,7 +20,6 @@ from .chemistry import (
     estimate_free_chlorine,
     get_mv_from_input,
 )
-from .helpers import get_opt
 from .const import (
     BATTERY_MAX_MV,
     BATTERY_MIN_MV,
@@ -52,6 +51,7 @@ from .const import (
     PH_FACTORY_SLOPE,
     VALID_SYNC_MODES,
 )
+from .helpers import get_opt
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -4,19 +4,21 @@
 
 import logging
 from datetime import timedelta
+
 from homeassistant.components.number import RestoreNumber
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .const import (
-    CONF_CYA,
-    CONF_TAC,
-    CONF_TH,
-    CONF_TDS,
-    CONF_SCAN_INTERVAL,
     CONF_CHLORINE_MODEL,
+    CONF_CYA,
+    CONF_SCAN_INTERVAL,
+    CONF_TAC,
+    CONF_TDS,
+    CONF_TH,
     flipr_device_info,
     resolve_entry_context,
 )
@@ -111,7 +113,7 @@ class FliprUpdateIntervalNumber(CoordinatorEntity, RestoreNumber):
         await super().async_added_to_hass()
         last = await self.async_get_last_number_data()
         val = (
-            int(round(float(last.native_value)))
+            round(float(last.native_value))
             if last and last.native_value is not None
             else 60
         )
@@ -121,7 +123,7 @@ class FliprUpdateIntervalNumber(CoordinatorEntity, RestoreNumber):
         self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
-        val = int(round(float(value)))
+        val = round(float(value))
         val = max(self._attr_native_min_value, min(val, self._attr_native_max_value))
         self._attr_native_value = val
         self.coordinator.update_interval = timedelta(minutes=val)
@@ -192,11 +194,11 @@ class FliprWaterConfigNumber(
         if val is None:
             entry = self.hass.config_entries.async_get_entry(self._entry_id)
             if entry and self._key in entry.options:
-                val = int(round(float(entry.options[self._key])))
+                val = round(float(entry.options[self._key]))
         if val is None:
             last = await self.async_get_last_number_data()
             val = (
-                int(round(float(last.native_value)))
+                round(float(last.native_value))
                 if last and last.native_value is not None
                 else self._default_val
             )
@@ -221,7 +223,7 @@ class FliprWaterConfigNumber(
         self._refresh_chlorine_model()
         entry = self.hass.config_entries.async_get_entry(self._entry_id)
         if entry and self._key in entry.options:
-            new_val = int(round(float(entry.options[self._key])))
+            new_val = round(float(entry.options[self._key]))
             new_val = max(
                 int(self._attr_native_min_value),
                 min(new_val, int(self._attr_native_max_value)),
@@ -232,7 +234,7 @@ class FliprWaterConfigNumber(
         self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
-        int_val = int(round(float(value)))
+        int_val = round(float(value))
         int_val = max(
             int(self._attr_native_min_value),
             min(int_val, int(self._attr_native_max_value)),

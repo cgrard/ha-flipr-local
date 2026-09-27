@@ -6,8 +6,8 @@
 shared by the Flipr Local config and options flows."""
 
 import math
-import voluptuous as vol
 
+import voluptuous as vol
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
@@ -32,7 +32,6 @@ from .const import (
     DEFAULT_PH_REF_4,
     DEFAULT_PH_REF_7,
 )
-
 
 # Bounds (min, max, step) for every BOX number field, shared by the config and
 # options flows so the two cannot drift apart.
